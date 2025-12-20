@@ -1,9 +1,8 @@
-import { getDatabase } from './database';
+import { getDatabase } from '../storage/database';
 import { encrypt, decrypt, EncryptedData } from '../utils/crypto';
 import logger from '../utils/logger';
 import crypto from 'crypto';
-import { AuthenticationState, SignalDataTypeMap } from '@whiskeysockets/baileys';
-import { proto } from '@whiskeysockets/baileys';
+import { AuthenticationState } from '@whiskeysockets/baileys';
 
 /**
  * Baileys Auth State Storage
@@ -162,10 +161,10 @@ export async function useDatabaseAuthState(
         platform: 'unknown',
       } as any,
       keys: {
-        get: async (type: string, ids: string[]) => {
+        get: async (_type: string, _ids: string[]) => {
           return {};
         },
-        set: async (data: any) => {
+        set: async (_data: any) => {
           // Keys will be persisted via saveCreds
         },
       } as any,
@@ -173,18 +172,7 @@ export async function useDatabaseAuthState(
   }
 
   // In-memory keys storage
-  const writeData = (data: any, key: string) => {
-    // Store in authState.keys
-  };
-
-  const readData = (key: string) => {
-    // Read from authState.keys
-    return null;
-  };
-
-  const removeData = (key: string) => {
-    // Remove from authState.keys
-  };
+  // In-memory key ops removed (not used)
 
   return {
     state: authState,

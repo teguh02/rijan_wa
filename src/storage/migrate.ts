@@ -54,16 +54,20 @@ const migrations = [
         jid TEXT NOT NULL,
         message_type TEXT NOT NULL,
         payload TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'sent', 'failed', 'expired')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'expired')),
         retries INTEGER NOT NULL DEFAULT 0,
         error_message TEXT,
+        idempotency_key TEXT,
+        wa_message_id TEXT,
+          updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
         created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
         sent_at INTEGER,
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
         FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
       );
-      
+
       CREATE INDEX idx_messages_outbox_tenant_device ON messages_outbox(tenant_id, device_id);
+      CREATE INDEX idx_messages_outbox_idempotency ON messages_outbox(device_id, idempotency_key);
       CREATE INDEX idx_messages_outbox_status ON messages_outbox(status);
       CREATE INDEX idx_messages_outbox_created_at ON messages_outbox(created_at);
       

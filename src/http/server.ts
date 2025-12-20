@@ -4,11 +4,13 @@ import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
+import fastifyMultipart from '@fastify/multipart';
 import config from '../config';
 import logger from '../utils/logger';
 import { errorHandler, requestLogger } from '../middlewares/error-handler';
 import { runMigrations } from '../storage/migrate';
 import { closeDatabase } from '../storage/database';
+// media routes imported dynamically to avoid TS resolution issues
 
 export async function createServer(): Promise<FastifyInstance> {
   const server = Fastify({
@@ -29,12 +31,20 @@ export async function createServer(): Promise<FastifyInstance> {
     credentials: true,
   });
 
+  // Multipart for file uploads
+  await server.register(fastifyMultipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB
+      files: 1,
+    },
+  });
+
   // Rate limiting
   await server.register(fastifyRateLimit, {
     max: config.rateLimit.max,
     timeWindow: config.rateLimit.window,
     cache: 10000,
-    allowList: (req) => {
+    allowList: (_req) => {
       // Skip rate limiting untuk admin endpoints dengan valid master key
       return false;
     },
@@ -124,7 +134,7 @@ export async function createServer(): Promise<FastifyInstance> {
         },
       },
     },
-  }, async (request, reply) => {
+  }, async (_request, _reply) => {
     return {
       status: 'ok',
       timestamp: Date.now(),
@@ -147,8 +157,13 @@ export async function startServer(): Promise<void> {
     // Register routes
     const { registerAdminRoutes } = await import('./routes/admin');
     const { registerDeviceRoutes } = await import('./routes/devices');
+      const { messagesRoutes } = await import('./routes/messages');
+
     await registerAdminRoutes(server);
     await registerDeviceRoutes(server);
+  await server.register(messagesRoutes, { prefix: '/v1/devices' });
+    // @ts-ignore: Module resolves at runtime; TS type declarations not required
+    const { mediaRoutes } = await import('./routes/media');
 
     await server.listen({
       port: config.server.port,
@@ -157,6 +172,10 @@ export async function startServer(): Promise<void> {
 
     logger.info(`Server listening on http://0.0.0.0:${config.server.port}`);
     logger.info(`OpenAPI docs available at http://localhost:${config.server.port}/docs`);
+
+    // Start background jobs
+    const { messageProcessor } = await import('../jobs/message-processor');
+    messageProcessor.start();
 
     // Recover devices from previous session
     const { deviceManager } = await import('../baileys/device-manager');

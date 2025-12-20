@@ -12,7 +12,7 @@ const auditRepo = new AuditLogRepository();
  */
 export async function verifyMasterKey(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   const masterKey = request.headers['x-master-key'] as string;
 

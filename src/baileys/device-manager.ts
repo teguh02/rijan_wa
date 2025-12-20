@@ -1,12 +1,9 @@
 import makeWASocket, {
   DisconnectReason,
   WASocket,
-  useMultiFileAuthState,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
   Browsers,
-  isJidBroadcast,
-  isJidStatusBroadcast,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
@@ -14,7 +11,7 @@ import { BaileysAuthStore, useDatabaseAuthState } from './auth-store';
 import { DeviceStatus, DeviceState, PairingMethod, DeviceConnectionInfo } from './types';
 import { DeviceRepository } from '../storage/repositories';
 import logger from '../utils/logger';
-import crypto from 'crypto';
+// import crypto from 'crypto';
 
 /**
  * DeviceManager - Mengelola lifecycle Baileys socket per device
@@ -91,7 +88,7 @@ export class DeviceManager {
         },
         printQRInTerminal: false,
         browser: Browsers.ubuntu('Rijan WA Gateway'),
-        getMessage: async (key) => {
+        getMessage: async (_key) => {
           return { conversation: '' };
         },
         logger: logger as any,
@@ -353,7 +350,7 @@ export class DeviceManager {
     });
 
     // Messages (untuk future use)
-    socket.ev.on('messages.upsert', async (m) => {
+    socket.ev.on('messages.upsert', async (_m) => {
       // Will be handled in message module
     });
   }

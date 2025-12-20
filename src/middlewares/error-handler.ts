@@ -14,7 +14,7 @@ declare module 'fastify' {
 
 export async function requestLogger(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   // Generate unique request ID
   request.requestId = crypto.randomBytes(16).toString('hex');

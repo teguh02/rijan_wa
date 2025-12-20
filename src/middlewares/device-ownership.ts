@@ -11,7 +11,7 @@ const deviceRepo = new DeviceRepository();
  */
 export async function verifyDeviceOwnership(
   request: FastifyRequest<{ Params: { deviceId: string } }>,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   const { deviceId } = request.params;
   const tenantId = request.tenant?.id;

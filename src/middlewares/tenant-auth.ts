@@ -25,7 +25,7 @@ declare module 'fastify' {
  */
 export async function verifyTenantApiKey(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   // Extract API key dari header
   let apiKey: string | undefined;

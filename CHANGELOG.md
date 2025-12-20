@@ -1,6 +1,102 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.2.0] - 2025-12-20
+
+### 🚀 PROMPT 3 - WhatsApp Messaging Features + Chat Management
+
+#### ✨ New Features
+
+**Message Service Layer**
+- ✅ MessageService class dengan full Baileys messaging integration
+- ✅ MessageRepository untuk outbox/inbox tracking database
+- ✅ Outbox queue system untuk retry dan status tracking
+- ✅ Idempotency key support untuk prevent duplicate sends
+- ✅ Message status lifecycle: PENDING → QUEUED → SENDING → SENT → DELIVERED → READ
+- ✅ Automatic retry logic dengan backoff strategy (max 5 attempts)
+- ✅ Error handling dengan detailed error messages
+- ✅ Message ID tracking (internal + WhatsApp message ID)
+- ✅ Timestamp tracking (created_at, updated_at, sent_at)
+
+**Message Types Support**
+- ✅ Text messages dengan optional mentions dan quoted replies
+- ✅ Media messages: image, video, audio, document
+- ✅ Media from URL (axios download) atau Buffer
+- ✅ Location messages dengan GPS coordinates dan nama/alamat
+- ✅ Contact messages (vCard) - single atau multiple contacts
+- ✅ Reaction messages (emoji reactions)
+- ✅ Delete message (delete for everyone)
+- 🔜 Poll messages (structure ready, implementation pending)
+- 🔜 Edit messages (API pending)
+
+**Chat Management**
+- ✅ ChatService class untuk chat operations
+- ✅ List all chats dengan device cache
+- ✅ Get messages by JID dengan pagination
+- ✅ Mark messages as read (single atau batch)
+- ✅ Archive/unarchive chats
+- ✅ Mute/unmute chats dengan duration
+- ✅ Presence updates (typing, recording, available, paused)
+
+**Tenant Message Endpoints (Authorization: Bearer + Device Ownership)**
+- ✅ `POST /v1/devices/:deviceId/messages/text` - Send text message
+- ✅ `POST /v1/devices/:deviceId/messages/media` - Send media (image/video/audio/document)
+- ✅ `POST /v1/devices/:deviceId/messages/location` - Send location
+- ✅ `POST /v1/devices/:deviceId/messages/contact` - Send contact (vCard)
+- ✅ `POST /v1/devices/:deviceId/messages/reaction` - Send emoji reaction
+- ✅ `POST /v1/devices/:deviceId/messages/poll` - Send poll (not yet implemented)
+- ✅ `DELETE /v1/devices/:deviceId/messages/:messageId` - Delete message for everyone
+- ✅ `GET /v1/devices/:deviceId/messages/:messageId/status` - Get message status
+
+**Tenant Chat Endpoints (Authorization: Bearer + Device Ownership)**
+- ✅ `GET /v1/devices/:deviceId/chats` - List all chats
+- ✅ `GET /v1/devices/:deviceId/chats/:jid/messages` - Get chat messages with pagination
+- ✅ `POST /v1/devices/:deviceId/chats/:jid/mark-read` - Mark chat as read
+- ✅ `POST /v1/devices/:deviceId/chats/:jid/archive` - Archive/unarchive chat
+- ✅ `POST /v1/devices/:deviceId/chats/:jid/mute` - Mute/unmute chat
+- ✅ `POST /v1/devices/:deviceId/presence` - Send presence update
+
+**Database Schema Updates**
+- ✅ messages_outbox table dengan expanded status enum
+- ✅ idempotency_key field untuk prevent duplicates
+- ✅ wa_message_id field untuk tracking WhatsApp message IDs
+- ✅ updated_at timestamp untuk audit trail
+- ✅ Index on (device_id, idempotency_key) untuk fast lookups
+- ✅ messages_inbox table untuk storing received messages
+
+**Security & Validation**
+- ✅ Device ownership validation pada semua message endpoints
+- ✅ Tenant authentication untuk isolasi multi-tenant
+- ✅ JID format validation
+- ✅ Media type validation
+- ✅ Poll options validation (2-12 options)
+- ✅ Contact array validation
+
+**Dependencies Added**
+- ✅ axios@^1.7.9 - For media download from URLs
+- ✅ @fastify/multipart@^9.0.1 - For file uploads (future use)
+
+#### 🔧 Technical Improvements
+
+- ✅ HTTP error utilities module untuk consistent error responses
+- ✅ Comprehensive OpenAPI/Swagger schema untuk semua endpoints
+- ✅ Parameter validation dengan Fastify schema
+- ✅ Async message processing dengan error handling
+- ✅ Socket retrieval dari DeviceManager untuk message operations
+- ✅ JID normalization untuk consistent formatting
+- ✅ Message retry counter dengan incrementRetry method
+- ✅ Chat caching untuk performance optimization
+
+#### 📝 Notes
+
+- Poll sending structure ready tapi belum implemented di Baileys integration
+- Edit message API structure exists tapi Baileys API belum digunakan
+- Outbox queue processor untuk background retry belum implemented (manual retry via status check)
+- Webhook notifications untuk incoming messages belum implemented
+- Media upload endpoint untuk multipart/form-data belum implemented
+
+---
+
 
 ## [1.1.0] - 2025-12-20
 

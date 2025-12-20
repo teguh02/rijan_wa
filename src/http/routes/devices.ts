@@ -4,7 +4,6 @@ import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
 import { deviceManager } from '../../baileys/device-manager';
 import { DeviceRepository, AuditLogRepository } from '../../storage/repositories';
 import { AppError, ErrorCode, StandardResponse } from '../../types';
-import QRCode from 'qrcode';
 
 const deviceRepo = new DeviceRepository();
 const auditRepo = new AuditLogRepository();
