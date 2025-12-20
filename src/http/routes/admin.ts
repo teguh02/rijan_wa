@@ -1,11 +1,13 @@
 import { FastifyInstance } from 'fastify';
 import { verifyMasterKey } from '../../middlewares/auth';
 import { generateTenantApiKey, hashApiKey, generateId } from '../../utils/crypto';
-import { TenantRepository, AuditLogRepository } from '../../storage/repositories';
+import { TenantRepository, AuditLogRepository, DeviceRepository } from '../../storage/repositories';
 import { AppError, ErrorCode, StandardResponse } from '../../types';
+import { deviceManager } from '../../baileys/device-manager';
 
 const tenantRepo = new TenantRepository();
 const auditRepo = new AuditLogRepository();
+const deviceRepo = new DeviceRepository();
 
 interface CreateTenantBody {
   name: string;
@@ -332,4 +334,170 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
 
     reply.send(response);
   });
+
+  // Create device untuk tenant
+  server.post<{ Params: { tenantId: string }; Body: { label: string } }>(
+    '/v1/admin/tenants/:tenantId/devices',
+    {
+      preHandler: verifyMasterKey,
+      schema: {
+        tags: ['admin'],
+        description: 'Create device untuk tenant',
+        security: [{ masterKey: [] }],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: {
+            tenantId: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['label'],
+          properties: {
+            label: { type: 'string', minLength: 1, maxLength: 100 },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  device: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      tenant_id: { type: 'string' },
+                      label: { type: 'string' },
+                      status: { type: 'string' },
+                      created_at: { type: 'number' },
+                    },
+                  },
+                },
+              },
+              requestId: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { tenantId } = request.params;
+      const { label } = request.body;
+
+      // Check tenant exists
+      const tenant = tenantRepo.findById(tenantId);
+      if (!tenant) {
+        throw new AppError(ErrorCode.NOT_FOUND, 'Tenant not found', 404);
+      }
+
+      // Generate device ID
+      const deviceId = generateId('device');
+
+      // Create device
+      const device = deviceRepo.create({
+        id: deviceId,
+        tenant_id: tenantId,
+        label,
+        status: 'disconnected',
+      });
+
+      // Audit log
+      auditRepo.create({
+        tenant_id: tenantId,
+        actor: 'admin',
+        action: 'device.created',
+        resource_type: 'device',
+        resource_id: deviceId,
+        ip_address: request.ip,
+        user_agent: request.headers['user-agent'],
+        meta: JSON.stringify({ label }),
+      });
+
+      const response: StandardResponse = {
+        success: true,
+        data: {
+          device: {
+            id: device.id,
+            tenant_id: device.tenant_id,
+            label: device.label,
+            status: device.status,
+            created_at: device.created_at,
+          },
+        },
+        requestId: request.requestId,
+      };
+
+      reply.status(201).send(response);
+    }
+  );
+
+  // Delete device
+  server.delete<{ Params: { tenantId: string; deviceId: string } }>(
+    '/v1/admin/tenants/:tenantId/devices/:deviceId',
+    {
+      preHandler: verifyMasterKey,
+      schema: {
+        tags: ['admin'],
+        description: 'Delete device dan credentials',
+        security: [{ masterKey: [] }],
+        params: {
+          type: 'object',
+          required: ['tenantId', 'deviceId'],
+          properties: {
+            tenantId: { type: 'string' },
+            deviceId: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { tenantId, deviceId } = request.params;
+
+      // Verify device exists dan belongs to tenant
+      const device = deviceRepo.findById(deviceId, tenantId);
+      if (!device) {
+        throw new AppError(ErrorCode.NOT_FOUND, 'Device not found', 404);
+      }
+
+      // Stop device if running
+      try {
+        await deviceManager.stopDevice(deviceId);
+      } catch (error) {
+        // Ignore if not running
+      }
+
+      // Logout to clear session
+      try {
+        await deviceManager.logoutDevice(deviceId);
+      } catch (error) {
+        // Ignore errors
+      }
+
+      // Delete device
+      deviceRepo.delete(deviceId);
+
+      // Audit log
+      auditRepo.create({
+        tenant_id: tenantId,
+        actor: 'admin',
+        action: 'device.deleted',
+        resource_type: 'device',
+        resource_id: deviceId,
+        ip_address: request.ip,
+        user_agent: request.headers['user-agent'],
+      });
+
+      const response: StandardResponse = {
+        success: true,
+        data: { message: 'Device deleted' },
+        requestId: request.requestId,
+      };
+
+      reply.send(response);
+    }
+  );
 }

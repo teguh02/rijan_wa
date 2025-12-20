@@ -146,7 +146,9 @@ export async function startServer(): Promise<void> {
 
     // Register routes
     const { registerAdminRoutes } = await import('./routes/admin');
+    const { registerDeviceRoutes } = await import('./routes/devices');
     await registerAdminRoutes(server);
+    await registerDeviceRoutes(server);
 
     await server.listen({
       port: config.server.port,
@@ -155,6 +157,12 @@ export async function startServer(): Promise<void> {
 
     logger.info(`Server listening on http://0.0.0.0:${config.server.port}`);
     logger.info(`OpenAPI docs available at http://localhost:${config.server.port}/docs`);
+
+    // Recover devices from previous session
+    const { deviceManager } = await import('../baileys/device-manager');
+    logger.info('Starting device recovery...');
+    await deviceManager.recoverDevices();
+    logger.info('Device recovery completed');
 
     // Graceful shutdown
     const shutdown = async () => {

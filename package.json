@@ -1,7 +1,7 @@
 {
   "name": "rijan_wa",
   "version": "1.0.0",
-  "description": "WhatsApp Gateway berbasis Baileys - Multi-tenant & Multi-device",
+  "description": "A lightweight, multi-tenant WhatsApp gateway with socket-based communication and multi-device support",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -26,14 +26,17 @@
     "@fastify/rate-limit": "^10.1.1",
     "@fastify/swagger": "^9.3.0",
     "@fastify/swagger-ui": "^5.2.0",
+    "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.8",
     "better-sqlite3": "^11.7.0",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.0",
     "pino": "^9.6.0",
-    "pino-pretty": "^13.0.0"
+    "pino-pretty": "^13.0.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.5",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.18.2",

@@ -2,6 +2,291 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2025-12-20
+
+### 🚀 PROMPT 2 - Manajemen Device/Session Dinamis + Pairing + Lifecycle
+
+#### ✨ New Features
+
+**Device Management System**
+- ✅ DeviceManager class untuk mengelola Baileys socket connections
+- ✅ Multi-device dinamis: setiap deviceId = 1 socket Baileys aktif
+- ✅ In-memory device state tracking dengan Map<deviceId, instance>
+- ✅ Device lifecycle management: start, stop, logout, reconnect
+- ✅ Auto-reconnect dengan retry logic dan max attempts
+- ✅ Graceful disconnect handling berdasarkan DisconnectReason
+- ✅ Session recovery on server restart (auto-reconnect devices yang connected)
+
+**Baileys Integration**
+- ✅ Auth state storage encrypted di database per device
+- ✅ AES-256-GCM encryption dengan unique salt per device
+- ✅ Database-backed auth state (tidak pakai file system)
+- ✅ Credentials auto-save on creds.update event
+- ✅ makeCacheableSignalKeyStore untuk key management
+- ✅ Connection event handlers (open, close, connecting, qr)
+- ✅ Fetch latest Baileys version automatically
+
+**Pairing Flow**
+- ✅ QR Code pairing dengan auto-generation
+- ✅ QR code as base64 data URL (ready untuk frontend display)
+- ✅ Pairing code berbasis nomor telepon
+- ✅ Phone number validation dan cleaning
+- ✅ Pairing method tracking (QR vs CODE)
+- ✅ QR timeout handling (30 seconds max wait)
+- ✅ Pairing state management dengan status tracking
+
+**Admin Endpoints (X-Master-Key)**
+- ✅ `POST /v1/admin/tenants/:tenantId/devices` - Create device untuk tenant
+- ✅ `DELETE /v1/admin/tenants/:tenantId/devices/:deviceId` - Delete device + credentials
+
+**Tenant Device Endpoints (Authorization: Bearer)**
+- ✅ `GET /v1/devices` - List devices milik tenant dengan pagination
+- ✅ `GET /v1/devices/:deviceId` - Detail device dengan real-time status
+- ✅ `POST /v1/devices/:deviceId/start` - Start device dan connect WhatsApp
+- ✅ `POST /v1/devices/:deviceId/stop` - Stop device dan disconnect
+- ✅ `POST /v1/devices/:deviceId/logout` - Logout dan clear session
+- ✅ `POST /v1/devices/:deviceId/pairing/qr` - Generate QR code
+- ✅ `POST /v1/devices/:deviceId/pairing/code` - Generate pairing code
+- ✅ `GET /v1/devices/:deviceId/health` - Health check dan connection info
+
+**Security & Ownership**
+- ✅ Device ownership validation middleware
+- ✅ Tenant hanya bisa akses device miliknya sendiri
+- ✅ Device ID validation pada semua operations
+- ✅ Encrypted auth state dengan unique salt
+- ✅ Audit logging untuk semua device operations
+
+**Status & Observability**
+- ✅ Real-time device status: disconnected, connecting, connected, failed, pairing
+- ✅ Connection info: isConnected, lastConnectAt, lastDisconnectAt, uptime
+- ✅ WhatsApp JID tracking setelah login
+- ✅ Phone number extraction dan storage
+- ✅ Last error tracking (sanitized)
+- ✅ Reconnect attempts counter
+- ✅ Device uptime tracking
+
+**Data Storage**
+- ✅ `device_sessions` table untuk encrypted auth state
+- ✅ Salt, IV, auth tag storage per device
+- ✅ Encryption version tracking
+- ✅ Auth state save/load/delete operations
+- ✅ Device status updates di database
+- ✅ Phone number persistence after pairing
+
+#### 🔧 Technical Improvements
+
+**DeviceManager Architecture**
+```typescript
+- Singleton pattern untuk global access
+- Map-based device instance management
+- Event-driven socket lifecycle
+- Automatic credential persistence
+- Reconnection policy enforcement
+- Resource cleanup on stop/logout
+```
+
+**Auth State Storage**
+```typescript
+- Encrypted with AES-256-GCM
+- PBKDF2 key derivation from MASTER_KEY
+- Unique salt per device (16 bytes random)
+- Random IV per encryption (12 bytes for GCM)
+- Auth tag for integrity verification
+- JSON serialization of creds + keys
+```
+
+**Connection Lifecycle**
+```
+1. START → Load auth state → Create socket
+2. CONNECTING → Generate QR/pairing code
+3. PAIRING → Wait for user scan
+4. CONNECTED → Extract phone number → Save to DB
+5. DISCONNECT → Evaluate reconnect policy
+6. RECONNECT → Retry with exponential backoff
+7. LOGOUT → Clear session → Delete auth state
+```
+
+**Session Recovery Flow**
+```
+Server Restart →
+  Query devices with status 'connected'/'connecting' →
+  Load auth state dari database →
+  Recreate socket connections →
+  Resume WhatsApp sessions
+```
+
+#### 📊 API Response Examples
+
+**Create Device (Admin)**
+```bash
+POST /v1/admin/tenants/{tenantId}/devices
+X-Master-Key: <master_key>
+Body: { "label": "Customer Support Device" }
+
+Response:
+{
+  "success": true,
+  "data": {
+    "device": {
+      "id": "device_abc123",
+      "tenant_id": "tenant_xyz789",
+      "label": "Customer Support Device",
+      "status": "disconnected",
+      "created_at": 1703001234
+    }
+  }
+}
+```
+
+**Request QR Code**
+```bash
+POST /v1/devices/{deviceId}/pairing/qr
+Authorization: Bearer <tenant_api_key>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "qr_code": "data:image/png;base64,iVBORw0KG...",
+    "expires_at": 1703001294,
+    "message": "Scan QR code dengan WhatsApp di smartphone Anda"
+  }
+}
+```
+
+**Request Pairing Code**
+```bash
+POST /v1/devices/{deviceId}/pairing/code
+Authorization: Bearer <tenant_api_key>
+Body: { "phone_number": "628123456789" }
+
+Response:
+{
+  "success": true,
+  "data": {
+    "pairing_code": "ABCD-EFGH",
+    "phone_number": "628123456789",
+    "expires_at": 1703001294,
+    "message": "Masukkan pairing code ini di WhatsApp > Linked Devices"
+  }
+}
+```
+
+**Device Health Check**
+```bash
+GET /v1/devices/{deviceId}/health
+Authorization: Bearer <tenant_api_key>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "is_connected": true,
+    "status": "connected",
+    "wa_jid": "628123456789@s.whatsapp.net",
+    "phone_number": "628123456789",
+    "last_connect_at": 1703001234,
+    "uptime": 3600000
+  }
+}
+```
+
+#### 🔐 Security Enhancements
+
+**Device Ownership Validation**
+- Every device operation validates tenant ownership
+- 404 response if device not found or access denied
+- Prevents cross-tenant device access
+- Audit logging for ownership violations
+
+**Encrypted Session Storage**
+- No plaintext auth credentials in database
+- Unique encryption key per device (salt-based)
+- Cannot decrypt without MASTER_KEY
+- Integrity verification with auth tag
+
+**Audit Trail**
+- All device lifecycle events logged
+- device.created, device.started, device.stopped
+- device.logout, device.qr_requested, device.pairing_code_requested
+- Includes tenant_id, actor, IP, user agent
+
+#### 📦 New Dependencies
+
+**Production:**
+- `@hapi/boom@^10.0.1` - HTTP error handling untuk Baileys
+- `qrcode@^1.5.4` - QR code generation
+
+**Development:**
+- `@types/qrcode@^1.5.5` - QR code types
+
+#### 🐛 Bug Fixes & Improvements
+
+- Handle multiple QR requests dengan throttling logic
+- Prevent duplicate device.start dengan isStarting lock
+- Sanitize error messages sebelum expose ke API
+- Close socket properly on logout untuk avoid memory leaks
+- Clear QR code after successful connection
+- Update last_seen timestamp on connection events
+
+#### 🎯 Acceptance Criteria Met
+
+- ✅ Device baru dapat dibuat via API (admin endpoint)
+- ✅ Device dapat di-start dan menghasilkan QR/pairing code
+- ✅ Setelah pairing, status berubah menjadi 'connected'
+- ✅ Restart server tidak menghilangkan session (auto-recovery)
+- ✅ Satu deviceId hanya mengendalikan satu akun WA
+- ✅ DeviceId wajib pada semua operasi (path param)
+- ✅ Tenant ownership validation di semua endpoints
+- ✅ Session state tersimpan encrypted di database
+
+#### 📄 Files Created/Modified
+
+**New Files:**
+```
+src/baileys/
+  ├── auth-store.ts           # Encrypted auth state storage
+  ├── device-manager.ts       # Device lifecycle manager
+  └── types.ts                # Device state types
+
+src/http/routes/
+  └── devices.ts              # Tenant device endpoints
+
+src/middlewares/
+  └── device-ownership.ts     # Ownership validation
+```
+
+**Modified Files:**
+```
+package.json                  # Added @hapi/boom, qrcode
+src/http/server.ts           # Register device routes, session recovery
+src/http/routes/admin.ts     # Added device create/delete endpoints
+src/storage/repositories.ts  # (used by device manager)
+```
+
+#### 🚀 Performance Notes
+
+- In-memory device state untuk fast access
+- Database queries only on persistent operations
+- Async/await throughout untuk non-blocking I/O
+- Socket event handlers optimized
+- Minimal database writes (only on state changes)
+
+#### 🔄 What's Next (PROMPT 3 ideas)
+
+- [ ] Message sending endpoints (text, media, buttons, lists)
+- [ ] Incoming message handling dan storage
+- [ ] Webhook delivery system untuk events
+- [ ] Message queue dengan retry mechanism
+- [ ] Bulk messaging capabilities
+- [ ] Template message support
+- [ ] Message status tracking (pending, sent, delivered, read)
+- [ ] Media upload dan download handling
+- [ ] Group management endpoints
+- [ ] Contact management
+
+---
+
 ## [1.0.0] - 2025-12-20
 
 ### 🎉 Initial Release - Fondasi Proyek

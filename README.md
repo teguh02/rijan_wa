@@ -243,7 +243,136 @@ docker-compose logs -f
 ### Tenant Endpoints (requires Authorization: Bearer <api_key>)
 - Coming soon: Device management, messaging, webhooks
 
-## 🔧 Configuration
+## � Device Management (PROMPT 2)
+
+### Device Lifecycle
+
+1. **Create Device (Admin)**
+   ```bash
+   POST /v1/admin/tenants/{tenantId}/devices
+   ```
+
+2. **Start Device & Connect WhatsApp**
+   ```bash
+   POST /v1/devices/{deviceId}/start
+   ```
+
+3. **Pairing Methods:**
+   - **QR Code:** `POST /v1/devices/{deviceId}/pairing/qr`
+   - **Pairing Code:** `POST /v1/devices/{deviceId}/pairing/code`
+
+4. **Monitor Status**
+   ```bash
+   GET /v1/devices/{deviceId}/health
+   ```
+
+5. **Stop or Logout**
+   ```bash
+   POST /v1/devices/{deviceId}/stop
+   POST /v1/devices/{deviceId}/logout
+   ```
+
+### Device Endpoints
+
+**List Devices:**
+```bash
+GET /v1/devices?limit=50&offset=0
+Authorization: Bearer <tenant_api_key>
+```
+
+**Get Device Detail:**
+```bash
+GET /v1/devices/{deviceId}
+Authorization: Bearer <tenant_api_key>
+```
+
+**Start Device:**
+```bash
+POST /v1/devices/{deviceId}/start
+Authorization: Bearer <tenant_api_key>
+```
+
+**Stop Device:**
+```bash
+POST /v1/devices/{deviceId}/stop
+Authorization: Bearer <tenant_api_key>
+```
+
+**Logout Device:**
+```bash
+POST /v1/devices/{deviceId}/logout
+Authorization: Bearer <tenant_api_key>
+```
+
+**Request QR Code:**
+```bash
+POST /v1/devices/{deviceId}/pairing/qr
+Authorization: Bearer <tenant_api_key>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "qr_code": "data:image/png;base64,...",
+    "expires_at": 1703001294,
+    "message": "Scan QR code dengan WhatsApp di smartphone Anda"
+  }
+}
+```
+
+**Request Pairing Code:**
+```bash
+POST /v1/devices/{deviceId}/pairing/code
+Authorization: Bearer <tenant_api_key>
+Content-Type: application/json
+
+{
+  "phone_number": "628123456789"
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "pairing_code": "ABCD-EFGH",
+    "phone_number": "628123456789",
+    "expires_at": 1703001294,
+    "message": "Masukkan pairing code ini di WhatsApp > Linked Devices"
+  }
+}
+```
+
+**Device Health Check:**
+```bash
+GET /v1/devices/{deviceId}/health
+Authorization: Bearer <tenant_api_key>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "is_connected": true,
+    "status": "connected",
+    "wa_jid": "628123456789@s.whatsapp.net",
+    "phone_number": "628123456789",
+    "last_connect_at": 1703001234,
+    "last_disconnect_at": null,
+    "uptime": 3600000
+  }
+}
+```
+
+### Device Status
+
+| Status | Description |
+|--------|-------------|
+| `disconnected` | Device belum connect atau sudah disconnect |
+| `connecting` | Sedang mencoba connect ke WhatsApp |
+| `pairing` | Menunggu QR scan atau pairing code input |
+| `connected` | Berhasil connect dan ready |
+| `failed` | Connection failed setelah max retries |
+
+## �🔧 Configuration
 
 ### Environment Variables
 
@@ -259,6 +388,12 @@ docker-compose logs -f
 | `ENCRYPTION_ALGORITHM` | Encryption algorithm | aes-256-gcm |
 
 ## 🧪 Testing
+
+### Ownership Validation Test
+
+```bash
+npm run test:ownership
+```
 
 ### Create Tenant (Admin)
 
@@ -291,6 +426,34 @@ Response:
 
 ```bash
 curl http://localhost:3000/health
+```
+
+### Complete Device Pairing Flow
+
+**Step 1: Create Device**
+```bash
+curl -X POST http://localhost:3000/v1/admin/tenants/tenant_abc123/devices \
+  -H "X-Master-Key: YOUR_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"label": "Customer Support"}'
+```
+
+**Step 2: Start Device**
+```bash
+curl -X POST http://localhost:3000/v1/devices/device_xyz789/start \
+  -H "Authorization: Bearer YOUR_TENANT_API_KEY"
+```
+
+**Step 3: Get QR Code**
+```bash
+curl -X POST http://localhost:3000/v1/devices/device_xyz789/pairing/qr \
+  -H "Authorization: Bearer YOUR_TENANT_API_KEY"
+```
+
+**Step 4: Check Status**
+```bash
+curl http://localhost:3000/v1/devices/device_xyz789/health \
+  -H "Authorization: Bearer YOUR_TENANT_API_KEY"
 ```
 
 ## 🛡️ Security Best Practices
@@ -335,13 +498,26 @@ Structured logging dengan Pino:
 
 ## 🔄 Roadmap
 
-- [ ] Device management endpoints
-- [ ] QR code generation untuk pairing
-- [ ] Message sending (text, media, template)
+**Completed:**
+- [x] Multi-tenant architecture dengan secure API keys
+- [x] Device management system
+- [x] Baileys integration dengan encrypted session storage
+- [x] QR code dan pairing code flow
+- [x] Auto-reconnect dan session recovery
+- [x] Device lifecycle management (start/stop/logout)
+- [x] Real-time device status tracking
+- [x] Ownership validation
+
+**In Progress:**
+- [ ] Message sending endpoints (text, media, template)
+- [ ] Incoming message handling
 - [ ] Webhook delivery system
+
+**Planned:**
 - [ ] Message queue worker
-- [ ] Baileys integration
-- [ ] Session persistence
+- [ ] Message status tracking
+- [ ] Group management
+- [ ] Contact management
 - [ ] Multi-instance support (Redis)
 - [ ] Metrics & monitoring (Prometheus)
 - [ ] Admin dashboard (optional)
