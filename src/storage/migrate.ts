@@ -125,6 +125,61 @@ const migrations = [
       CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
       CREATE INDEX idx_audit_logs_action ON audit_logs(action);
       
+      -- Event logs (inbound events from Baileys)
+      CREATE TABLE IF NOT EXISTS event_logs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        device_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        received_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+      );
+      
+      CREATE INDEX idx_event_logs_tenant_device ON event_logs(tenant_id, device_id);
+      CREATE INDEX idx_event_logs_type ON event_logs(event_type);
+      CREATE INDEX idx_event_logs_received_at ON event_logs(received_at);
+      
+      -- Webhook delivery logs
+      CREATE TABLE IF NOT EXISTS webhook_logs (
+        id TEXT PRIMARY KEY,
+        webhook_id TEXT NOT NULL,
+        event_id TEXT,
+        status_code INTEGER,
+        attempts INTEGER NOT NULL DEFAULT 1,
+        last_error TEXT,
+        sent_at INTEGER,
+        FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
+      );
+      
+      CREATE INDEX idx_webhook_logs_webhook_id ON webhook_logs(webhook_id);
+      CREATE INDEX idx_webhook_logs_sent_at ON webhook_logs(sent_at);
+      
+      -- Dead letter queue for failed webhooks
+      CREATE TABLE IF NOT EXISTS dlq (
+        id TEXT PRIMARY KEY,
+        webhook_id TEXT NOT NULL,
+        event_payload TEXT NOT NULL,
+        reason TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        FOREIGN KEY (webhook_id) REFERENCES webhooks(id) ON DELETE CASCADE
+      );
+      
+      CREATE INDEX idx_dlq_webhook_id ON dlq(webhook_id);
+      CREATE INDEX idx_dlq_created_at ON dlq(created_at);
+      
+      -- Device locks for multi-instance support
+      CREATE TABLE IF NOT EXISTS device_locks (
+        device_id TEXT PRIMARY KEY,
+        instance_id TEXT NOT NULL,
+        acquired_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        expires_at INTEGER NOT NULL,
+        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+      );
+      
+      CREATE INDEX idx_device_locks_expires_at ON device_locks(expires_at);
+      
       -- Migration tracking
       CREATE TABLE IF NOT EXISTS migrations (
         version INTEGER PRIMARY KEY,

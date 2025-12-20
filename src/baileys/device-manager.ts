@@ -349,9 +349,175 @@ export class DeviceManager {
       }
     });
 
-    // Messages (untuk future use)
-    socket.ev.on('messages.upsert', async (_m) => {
-      // Will be handled in message module
+    // Messages (incoming)
+    socket.ev.on('messages.upsert', async (m) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+        const { webhookService } = await import('../modules/webhooks/service');
+
+        for (const msg of m.messages) {
+          if (msg.message && msg.key.fromMe === false) {
+            // Save to event log and inbox
+            const jid = msg.key.remoteJid || 'unknown';
+            const messageId = msg.key.id || 'unknown';
+
+            eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messages.upsert', {
+              key: msg.key,
+              message: msg.message,
+              pushName: msg.pushName,
+            });
+
+            eventRepository.saveInboxMessage(
+              instance.state.tenantId,
+              deviceId,
+              jid,
+              messageId,
+              msg.message.conversation ? 'text' : 'media',
+              msg
+            );
+
+            // Trigger webhooks
+            await webhookService.queueDelivery({
+              id: messageId,
+              eventType: 'message.received',
+              tenantId: instance.state.tenantId,
+              deviceId,
+              timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Math.floor(Date.now() / 1000),
+              data: msg,
+            });
+          }
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process message.upsert');
+      }
+    });
+
+    // Message updates (edits, acks)
+    socket.ev.on('messages.update', async (updates) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+        const { webhookService } = await import('../modules/webhooks/service');
+
+        for (const update of updates) {
+          eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messages.update', update);
+
+          // Trigger webhooks for read/delivery receipts
+          if (update.update?.status) {
+            const statusMap: Record<number, 'message.updated' | 'receipt.delivery' | 'receipt.read'> = {
+              1: 'message.updated',
+              2: 'receipt.delivery',
+              3: 'receipt.read',
+            };
+            const eventType = statusMap[update.update.status] || 'message.updated';
+
+            await webhookService.queueDelivery({
+              id: update.key.id || '',
+              eventType,
+              tenantId: instance.state.tenantId,
+              deviceId,
+              timestamp: Math.floor(Date.now() / 1000),
+              data: update,
+            });
+          }
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process messages.update');
+      }
+    });
+
+    // Message receipts (delivery/read)
+    socket.ev.on('message-receipt.update', async (updates) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+        const { webhookService } = await import('../modules/webhooks/service');
+
+        eventRepository.saveEvent(instance.state.tenantId, deviceId, 'message-receipt.update', updates);
+
+        // Queue webhook for receipt event
+        await webhookService.queueDelivery({
+          id: `receipt-${Date.now()}`,
+          eventType: 'receipt.delivery',
+          tenantId: instance.state.tenantId,
+          deviceId,
+          timestamp: Math.floor(Date.now() / 1000),
+          data: updates,
+        });
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process message-receipt.update');
+      }
+    });
+
+    // Group updates
+    socket.ev.on('groups.update', async (updates) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+        const { webhookService } = await import('../modules/webhooks/service');
+
+        for (const update of updates) {
+          eventRepository.saveEvent(instance.state.tenantId, deviceId, 'groups.update', update);
+
+          await webhookService.queueDelivery({
+            id: update.id || `group-${Date.now()}`,
+            eventType: 'group.updated',
+            tenantId: instance.state.tenantId,
+            deviceId,
+            timestamp: Math.floor(Date.now() / 1000),
+            data: update,
+          });
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process groups.update');
+      }
+    });
+
+    // Group participant updates
+    socket.ev.on('group-participants.update', async (update) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+        const { webhookService } = await import('../modules/webhooks/service');
+
+        eventRepository.saveEvent(instance.state.tenantId, deviceId, 'group-participants.update', update);
+
+        // Determine if add or remove
+        const action = update.action === 'add' ? 'participant.added' : 'participant.removed';
+
+        await webhookService.queueDelivery({
+          id: update.id,
+          eventType: action as any,
+          tenantId: instance.state.tenantId,
+          deviceId,
+          timestamp: Math.floor(Date.now() / 1000),
+          data: update,
+        });
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process group-participants.update');
+      }
+    });
+
+    // Contact updates
+    socket.ev.on('contacts.update', async (updates) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+
+        for (const update of updates) {
+          eventRepository.saveEvent(instance.state.tenantId, deviceId, 'contacts.update', update);
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process contacts.update');
+      }
+    });
+
+    // Chat updates
+    socket.ev.on('chats.update', async (updates) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository');
+
+        for (const update of updates) {
+          eventRepository.saveEvent(instance.state.tenantId, deviceId, 'chats.update', update);
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process chats.update');
+      }
     });
   }
 

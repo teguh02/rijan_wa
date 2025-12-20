@@ -157,13 +157,25 @@ export async function startServer(): Promise<void> {
     // Register routes
     const { registerAdminRoutes } = await import('./routes/admin');
     const { registerDeviceRoutes } = await import('./routes/devices');
-      const { messagesRoutes } = await import('./routes/messages');
+    const { messagesRoutes } = await import('./routes/messages');
+    const { healthRoutes } = await import('./routes/health');
+    const { webhooksRoutes } = await import('./routes/webhooks');
+    const { eventsRoutes } = await import('./routes/events');
+    const { groupsRoutes } = await import('./routes/groups');
+    const { privacyRoutes } = await import('./routes/privacy');
+
+    // @ts-ignore: Module resolves at runtime; TS type declarations not required
+    const { mediaRoutes } = await import('./routes/media');
 
     await registerAdminRoutes(server);
     await registerDeviceRoutes(server);
-  await server.register(messagesRoutes, { prefix: '/v1/devices' });
-    // @ts-ignore: Module resolves at runtime; TS type declarations not required
-    const { mediaRoutes } = await import('./routes/media');
+    await server.register(messagesRoutes, { prefix: '/v1/devices' });
+    await server.register(mediaRoutes, { prefix: '/v1/devices' });
+    await server.register(healthRoutes);
+    await server.register(webhooksRoutes, { prefix: '/v1' });
+    await server.register(eventsRoutes, { prefix: '/v1/devices/:deviceId' });
+    await server.register(groupsRoutes, { prefix: '/v1/devices/:deviceId/groups' });
+    await server.register(privacyRoutes, { prefix: '/v1/devices/:deviceId' });
 
     await server.listen({
       port: config.server.port,
@@ -186,8 +198,28 @@ export async function startServer(): Promise<void> {
     // Graceful shutdown
     const shutdown = async () => {
       logger.info('Shutting down gracefully...');
-      await server.close();
-      closeDatabase();
+      
+      try {
+        // Close HTTP server
+        await server.close();
+
+        // Release device locks
+        try {
+          const { DistributedLock } = await import('../utils/distributed-lock');
+          const lock = new DistributedLock(config.instanceId);
+          lock.cleanupExpiredLocks();
+          logger.info('Device locks cleaned up');
+        } catch (error) {
+          logger.warn({ error }, 'Failed to cleanup locks');
+        }
+
+        // Close database
+        closeDatabase();
+        logger.info('Shutdown complete');
+      } catch (error) {
+        logger.error({ error }, 'Error during shutdown');
+      }
+
       process.exit(0);
     };
 

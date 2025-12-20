@@ -1,6 +1,141 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [1.3.0] - 2025-12-20
+
+### 🚀 PROMPT 4 - Inbound Events, Webhooks, Group/Privacy API, Production Hardening
+
+#### ✨ New Features
+
+**Inbound Event System**
+- ✅ Automatic capture of Baileys events (messages.upsert, messages.update, message-receipt.update, groups.update, etc.)
+- ✅ event_logs table untuk storing all inbound events dengan tenantId, deviceId, eventType, payload
+- ✅ Metadata added to events: tenantId, deviceId, receivedAt timestamp
+- ✅ Event filtering support: by event type, by time range
+- ✅ messages_inbox table untuk structured storage of received messages
+
+**Webhook System (Complete)**
+- ✅ Webhook registration/management API
+- ✅ `POST /v1/webhooks` - Register webhook
+- ✅ `GET /v1/webhooks` - List tenant webhooks
+- ✅ `GET /v1/webhooks/:id` - Get webhook details
+- ✅ `PUT /v1/webhooks/:id` - Update webhook configuration
+- ✅ `DELETE /v1/webhooks/:id` - Delete webhook
+- ✅ HMAC-SHA256 signing: X-Rijan-Signature header
+- ✅ X-Rijan-Attempt header untuk tracking retry attempts
+- ✅ Exponential backoff retry strategy (1s, 5s, 15s)
+- ✅ Configurable retry count dan timeout per webhook
+- ✅ Dead Letter Queue (DLQ) untuk failed deliveries
+- ✅ Webhook event filtering per tenant
+- ✅ webhook_logs table untuk delivery tracking
+- ✅ dlq table untuk failed webhook storage
+
+**Webhook Events Supported**
+- message.received, message.updated, message.deleted
+- receipt.delivery, receipt.read
+- group.created, group.updated, group.deleted
+- participant.added, participant.removed
+- contact.updated, device.connected, device.disconnected
+
+**Inbound Pull Endpoints**
+- ✅ `GET /v1/devices/:deviceId/events?since=...&type=...` - Pull events with filtering
+- ✅ Pagination support via limit parameter (max 500)
+- ✅ Time-based filtering untuk efficient data retrieval
+
+**Group Management API**
+- ✅ `POST /v1/devices/:deviceId/groups/create` - Create new group
+- ✅ `GET /v1/devices/:deviceId/groups/:groupJid` - Get group metadata
+- ✅ `POST /v1/devices/:deviceId/groups/:groupJid/participants/add` - Add members
+- ✅ `POST /v1/devices/:deviceId/groups/:groupJid/participants/remove` - Remove members
+- ✅ JID normalization untuk participant formatting
+- ✅ Audit logging untuk group operations
+
+**Privacy Settings API**
+- ✅ `GET /v1/devices/:deviceId/privacy/settings` - Fetch device privacy config
+- ✅ `POST /v1/devices/:deviceId/privacy/settings` - Update privacy settings
+- ✅ Support untuk read receipts, online status, last seen, group add, status privacy
+- ✅ Audit logging untuk privacy changes
+
+**Multi-Instance Locking**
+- ✅ DistributedLock utility untuk prevent multiple instances owning same device
+- ✅ device_locks table dengan TTL (5 minutes)
+- ✅ Lock acquisition dengan timeout support
+- ✅ Automatic lock refresh untuk long-running connections
+- ✅ Cleanup of expired locks at shutdown
+
+**Health & Metrics**
+- ✅ `GET /health` - Liveness check (always 200)
+- ✅ `GET /ready` - Readiness check (200 or 503)
+- ✅ Database health check
+- ✅ Worker health check
+- ✅ `GET /metrics` - Prometheus-compatible metrics endpoint
+- ✅ Metrics: connected devices, total devices, messages sent/received, active webhooks, failed webhooks, tenants, uptime, memory usage
+
+**Audit Logging**
+- ✅ audit_logs table untuk sensitive operations
+- ✅ Tracking: actor, action, resource_type, resource_id, metadata
+- ✅ IP address dan user agent capture
+- ✅ Audit trail untuk: group operations, privacy changes, device operations
+- ✅ `logAudit()` utility function dengan tenant isolation
+
+**Graceful Shutdown**
+- ✅ Lock cleanup on shutdown
+- ✅ Device socket cleanup
+- ✅ Database connection closing
+- ✅ SIGINT dan SIGTERM signal handling
+- ✅ Ordered shutdown sequence (HTTP → locks → DB)
+
+#### 🔧 Technical Improvements
+
+**Database Schema**
+- ✅ event_logs table dengan event_type dan payload indexing
+- ✅ webhook_logs table untuk delivery tracking
+- ✅ dlq table untuk failed webhook archiving
+- ✅ device_locks table untuk distributed locking
+- ✅ audit_logs table dengan comprehensive indexing
+- ✅ All tables include proper foreign keys dan cascade rules
+- ✅ All tables include proper indexes untuk query performance
+
+**Config Updates**
+- ✅ instanceId generation (env: INSTANCE_ID atau random UUID)
+- ✅ Support untuk INSTANCE_ID environment variable
+
+**Event Handling**
+- ✅ Async event processing dalam device-manager
+- ✅ Automatic webhook queueing saat events diterima
+- ✅ Error isolation untuk prevent event processing crashes
+- ✅ Event type mapping ke webhook events
+
+**Route Registration**
+- ✅ New routes registered at startup
+- ✅ Route prefixing untuk organized API namespace
+- ✅ Health routes without authentication
+- ✅ Webhook routes under /v1/webhooks
+- ✅ Event routes under /v1/devices/:deviceId
+- ✅ Group routes under /v1/devices/:deviceId/groups
+- ✅ Privacy routes under /v1/devices/:deviceId
+
+#### 📦 Dependencies
+
+- ✅ All webhook delivery dan retry logic menggunakan axios
+- ✅ No additional dependencies required
+- ✅ Uses built-in crypto untuk HMAC signing
+
+#### ⚙️ Configuration
+
+New environment variables:
+- `INSTANCE_ID` - Optional. Unique identifier untuk distributed locking. Auto-generated if not provided.
+
+#### 📝 Notes
+
+- History sync endpoint (POST /history/sync) structure ready untuk future implementation
+- Anti-abuse policies (device limits, message rate limits) structure ready untuk future hardening
+- Webhook delivery currently synchronous; background queue processor dapat ditambahkan untuk scale
+- DLQ entries dapat di-replay atau di-delete via API (future enhancement)
+
+---
+
 ## [1.2.0] - 2025-12-20
 
 ### 🚀 PROMPT 3 - WhatsApp Messaging Features + Chat Management
@@ -96,7 +231,6 @@ All notable changes to this project will be documented in this file.
 - Media upload endpoint untuk multipart/form-data belum implemented
 
 ---
-
 
 ## [1.1.0] - 2025-12-20
 

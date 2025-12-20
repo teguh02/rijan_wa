@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'crypto';
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,7 @@ interface Config {
     max: number;
     window: number;
   };
+  instanceId: string;
 }
 
 const config: Config = {
@@ -40,6 +42,8 @@ const config: Config = {
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
     window: parseInt(process.env.RATE_LIMIT_WINDOW || '60000', 10),
   },
+  // Generate unique instance ID for distributed locking
+  instanceId: process.env.INSTANCE_ID || crypto.randomUUID(),
 };
 
 // Validate critical config
