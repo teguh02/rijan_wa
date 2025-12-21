@@ -467,7 +467,7 @@ Response:
   "data": {
     "qr_code": "data:image/png;base64,iVBORw0KG...",
     "expires_at": 1703001294,
-    "message": "Scan QR code dengan WhatsApp di smartphone Anda"
+    "message": "Scan the QR code with WhatsApp on your smartphone"
   }
 }
 ```

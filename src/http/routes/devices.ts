@@ -408,7 +408,7 @@ export async function registerDeviceRoutes(server: FastifyInstance): Promise<voi
         data: {
           qr_code: qrString,
           expires_at: Date.now() + 60000, // 60 seconds
-          message: 'Scan QR code dengan WhatsApp di smartphone Anda',
+          message: 'Scan the QR code with WhatsApp on your smartphone',
         },
         requestId: request.requestId,
       };

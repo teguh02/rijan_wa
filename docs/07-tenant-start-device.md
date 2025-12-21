@@ -51,7 +51,7 @@ Response:
     "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...",
     "qr_string": "2@abc123xyz...",
     "expires_at": 1703145660,
-    "message": "Scan QR code dengan WhatsApp di smartphone Anda"
+    "message": "Scan the QR code with WhatsApp on your smartphone"
   }
 }
 ```
