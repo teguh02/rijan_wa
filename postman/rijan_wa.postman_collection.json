@@ -332,6 +332,54 @@
               "response": []
             },
             {
+              "name": "List Device Sessions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/sessions?limit=20&offset=0",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "sessions"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Device Session",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/session",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "session"]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "Get Device by ID",
               "request": {
                 "method": "GET",

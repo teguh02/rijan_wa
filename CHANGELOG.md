@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2025-12-21
+
+### 🔌 Baileys Session Refactor (Multi-Tenant)
+
+#### ✨ Improvements
+
+- ✅ Standardized Baileys auth storage to filesystem multi-file JSON (Baileys default)
+- ✅ Tenant/device scoped session directories: `./sessions/{tenantId}/{deviceId}/`
+- ✅ Legacy session migration support from `./sessions/{deviceId}/`
+- ✅ SQLite now stores session metadata mapping only (session_dir, kind, wa_jid, wa_name) for reliable device↔session identification
+
+#### 🧭 API
+
+- ✅ Added tenant endpoints for session metadata:
+  - `GET /v1/devices/:deviceId/session`
+  - `GET /v1/devices/sessions`
+- ✅ Updated Postman collection with the new session endpoints
+
+#### 🐛 Bug Fixes
+
+- ✅ QR code retrieval now works while device status is `pairing` (returns cached QR)
+
 ## [1.3.1] - 2025-12-21
 
 ### 🔐 Security & Authentication Fixes

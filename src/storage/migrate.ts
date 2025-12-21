@@ -188,6 +188,22 @@ const migrations = [
       );
     `,
   },
+  {
+    version: 2,
+    name: 'device_sessions_file_based_metadata',
+    up: `
+      -- Add metadata columns for standard Baileys multi-file sessions
+      ALTER TABLE device_sessions ADD COLUMN tenant_id TEXT;
+      ALTER TABLE device_sessions ADD COLUMN session_kind TEXT NOT NULL DEFAULT 'baileys_multifile';
+      ALTER TABLE device_sessions ADD COLUMN session_dir TEXT;
+      ALTER TABLE device_sessions ADD COLUMN wa_jid TEXT;
+      ALTER TABLE device_sessions ADD COLUMN wa_name TEXT;
+
+      CREATE INDEX IF NOT EXISTS idx_device_sessions_tenant_id ON device_sessions(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_device_sessions_session_kind ON device_sessions(session_kind);
+      CREATE INDEX IF NOT EXISTS idx_device_sessions_updated_at ON device_sessions(updated_at);
+    `,
+  },
 ];
 
 export function runMigrations(): void {

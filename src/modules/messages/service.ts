@@ -407,13 +407,7 @@ export class MessageService {
       throw new Error('Device not found');
     }
 
-    // Access socket from device manager (need to expose it)
-    const instance = (deviceManager as any).devices.get(deviceId);
-    if (!instance?.socket) {
-      throw new Error('Device socket not available');
-    }
-
-    return instance.socket;
+    return deviceManager.getSocketOrThrow(deviceId);
   }
 
   /**

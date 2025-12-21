@@ -1,183 +1,291 @@
-import { getDatabase } from '../storage/database';
-import { encrypt, decrypt, EncryptedData } from '../utils/crypto';
+import path from 'path';
+import fs from 'fs';
 import logger from '../utils/logger';
-import crypto from 'crypto';
-import { AuthenticationState } from '@whiskeysockets/baileys';
+import { AuthenticationState, useMultiFileAuthState } from '@whiskeysockets/baileys';
 
 /**
- * Baileys Auth State Storage
- * Menyimpan auth state secara encrypted di database
+ * Baileys Auth State Storage - File-based dengan DB sync
+ * 
+ * Struktur:
+ * ./sessions/
+ *   └── device_id/
+ *       ├── creds.json          (Baileys credentials)
+ *       ├── pre-key-1.json      (Signal pre-keys)
+ *       ├── sender-key-*.json   (Signal sender keys)
+ *       └── app-state-sync-*.json (App state)
+ *
+ * Database: Sync metadata untuk quick queries
  */
 
-interface StoredAuthState {
-  device_id: string;
-  auth_encrypted: string;
-  auth_iv: string;
-  auth_tag: string;
-  enc_version: number;
-  salt: string;
-  updated_at: number;
-}
-
 export class BaileysAuthStore {
-  private db = getDatabase();
+  private sessionsDir: string;
 
-  /**
-   * Simpan auth state ke database (encrypted)
-   */
-  async saveAuthState(deviceId: string, authState: AuthenticationState): Promise<void> {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const serialized = JSON.stringify({
-      creds: authState.creds,
-      keys: authState.keys,
-    });
-
-    const encrypted = encrypt(serialized, salt);
-    const now = Math.floor(Date.now() / 1000);
-
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO device_sessions 
-      (device_id, auth_encrypted, auth_iv, auth_tag, enc_version, salt, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      deviceId,
-      encrypted.encrypted,
-      encrypted.iv,
-      encrypted.authTag,
-      encrypted.version,
-      salt,
-      now
-    );
-
-    logger.debug({ deviceId }, 'Auth state saved');
+  constructor(sessionsDir: string = path.join(process.cwd(), 'sessions')) {
+    this.sessionsDir = sessionsDir;
+    
+    // Ensure sessions directory exists
+    if (!fs.existsSync(this.sessionsDir)) {
+      fs.mkdirSync(this.sessionsDir, { recursive: true });
+      logger.info({ path: this.sessionsDir }, 'Sessions directory created');
+    }
   }
 
   /**
-   * Load auth state dari database (decrypted)
+   * Root directory tempat semua session disimpan.
    */
-  async loadAuthState(deviceId: string): Promise<AuthenticationState | null> {
-    const stmt = this.db.prepare(`
-      SELECT * FROM device_sessions WHERE device_id = ?
-    `);
+  getSessionsRootDir(): string {
+    return this.sessionsDir;
+  }
 
-    const row = stmt.get(deviceId) as StoredAuthState | undefined;
+  /**
+   * Get device session directory
+   */
+  private getDeviceDir(tenantId: string, deviceId: string): string {
+    return path.join(this.sessionsDir, tenantId, deviceId);
+  }
 
-    if (!row || !row.auth_encrypted) {
-      return null;
+  private getLegacyDeviceDir(deviceId: string): string {
+    return path.join(this.sessionsDir, deviceId);
+  }
+
+  /**
+   * Get file path untuk specific auth object
+   */
+  private getFilePath(tenantId: string, deviceId: string, fileName: string): string {
+    return path.join(this.getDeviceDir(tenantId, deviceId), fileName);
+  }
+
+  private getLegacyFilePath(deviceId: string, fileName: string): string {
+    return path.join(this.getLegacyDeviceDir(deviceId), fileName);
+  }
+
+  private ensureDirExists(dirPath: string): void {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
     }
+  }
+
+  /**
+   * Migrasi kompatibilitas: dukung folder lama `sessions/{deviceId}`.
+   * Jika ditemukan dan folder baru belum ada, pindahkan ke `sessions/{tenantId}/{deviceId}`.
+   */
+  migrateLegacySessionDirIfNeeded(tenantId: string, deviceId: string): void {
+    const legacyDir = this.getLegacyDeviceDir(deviceId);
+    const newDir = this.getDeviceDir(tenantId, deviceId);
+
+    if (!fs.existsSync(legacyDir)) return;
+    if (fs.existsSync(newDir)) return;
 
     try {
-      const encryptedData: EncryptedData = {
-        encrypted: row.auth_encrypted,
-        iv: row.auth_iv,
-        authTag: row.auth_tag,
-        version: row.enc_version,
-      };
+      this.ensureDirExists(path.dirname(newDir));
+      fs.renameSync(legacyDir, newDir);
+      logger.info({ deviceId, tenantId, from: legacyDir, to: newDir }, 'Migrated legacy session directory');
+    } catch (error) {
+      logger.error({ error, deviceId, tenantId, legacyDir, newDir }, 'Failed to migrate legacy session directory');
+    }
+  }
 
-      const decrypted = decrypt(encryptedData, row.salt);
-      const parsed = JSON.parse(decrypted);
+  /**
+   * Resolve lokasi folder session untuk tenant/device.
+   */
+  resolveSessionDir(tenantId: string, deviceId: string): string {
+    this.ensureDirExists(this.sessionsDir);
+    this.migrateLegacySessionDirIfNeeded(tenantId, deviceId);
+    const sessionDir = this.getDeviceDir(tenantId, deviceId);
+    this.ensureDirExists(sessionDir);
+    return sessionDir;
+  }
 
-      logger.debug({ deviceId }, 'Auth state loaded');
+  /**
+   * Load session metadata dari filesystem
+   * Digunakan untuk sync ke database
+   */
+  async getSessionMetadata(tenantId: string, deviceId: string): Promise<{ 
+    hasSession: boolean; 
+    hasCreds: boolean; 
+    createdAt?: number; 
+    updatedAt?: number 
+  } | null> {
+    const deviceDir = this.getDeviceDir(tenantId, deviceId);
+    const credsFile = this.getFilePath(tenantId, deviceId, 'creds.json');
+
+    if (!fs.existsSync(deviceDir)) {
+      return null;
+    }
+
+    const hasCreds = fs.existsSync(credsFile);
+    
+    try {
+      const stats = fs.statSync(deviceDir);
+      const credsStats = hasCreds ? fs.statSync(credsFile) : null;
 
       return {
-        creds: parsed.creds,
-        keys: parsed.keys,
+        hasSession: true,
+        hasCreds,
+        createdAt: Math.floor(stats.birthtime.getTime() / 1000),
+        updatedAt: credsStats ? Math.floor(credsStats.mtime.getTime() / 1000) : Math.floor(stats.mtime.getTime() / 1000),
       };
     } catch (error) {
-      logger.error({ error, deviceId }, 'Failed to decrypt auth state');
+      logger.error({ error, deviceId }, 'Failed to read session metadata');
+      return {
+        hasSession: true,
+        hasCreds,
+      };
+    }
+  }
+
+  /**
+   * Baca identitas (jid/nama) dari creds.json untuk disimpan sebagai metadata DB.
+   */
+  async getCredsIdentity(
+    tenantId: string,
+    deviceId: string
+  ): Promise<{ waJid?: string; waName?: string } | null> {
+    const credsFile = this.getFilePath(tenantId, deviceId, 'creds.json');
+    if (!fs.existsSync(credsFile)) return null;
+
+    try {
+      const raw = fs.readFileSync(credsFile, 'utf8');
+      const json = JSON.parse(raw) as any;
+      const me = json?.me;
+      const waJid = typeof me?.id === 'string' ? me.id : undefined;
+      const waName = typeof me?.name === 'string' ? me.name : undefined;
+      return { waJid, waName };
+    } catch (error) {
+      logger.error({ error, deviceId, tenantId }, 'Failed to read creds identity');
       return null;
     }
   }
 
   /**
-   * Delete auth state dari database
+   * Scan sessions directory dan return list of device IDs
    */
-  async deleteAuthState(deviceId: string): Promise<void> {
-    const stmt = this.db.prepare(`
-      DELETE FROM device_sessions WHERE device_id = ?
-    `);
+  async scanSessions(): Promise<Array<{ tenantId: string; deviceId: string; sessionDir: string }>> {
+    try {
+      const results: Array<{ tenantId: string; deviceId: string; sessionDir: string }> = [];
+      const entries = fs.readdirSync(this.sessionsDir, { withFileTypes: true });
 
-    stmt.run(deviceId);
-    logger.debug({ deviceId }, 'Auth state deleted');
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const full = path.join(this.sessionsDir, entry.name);
+
+        // Legacy layout: sessions/{deviceId}/creds.json
+        const legacyCreds = path.join(full, 'creds.json');
+        if (fs.existsSync(legacyCreds)) {
+          // tenantId tidak diketahui dari filesystem; caller harus resolve dari database
+          results.push({ tenantId: '__LEGACY__', deviceId: entry.name, sessionDir: full });
+          continue;
+        }
+
+        // New layout: sessions/{tenantId}/{deviceId}/creds.json
+        const tenantId = entry.name;
+        const tenantEntries = fs.readdirSync(full, { withFileTypes: true });
+        for (const devEntry of tenantEntries) {
+          if (!devEntry.isDirectory()) continue;
+          const deviceId = devEntry.name;
+          const sessionDir = path.join(full, deviceId);
+          const credsFile = path.join(sessionDir, 'creds.json');
+          if (fs.existsSync(credsFile)) {
+            results.push({ tenantId, deviceId, sessionDir });
+          }
+        }
+      }
+
+      return results;
+    } catch (error) {
+      logger.error({ error }, 'Failed to scan sessions directory');
+      return [];
+    }
+  }
+
+  /**
+   * Delete auth state (remove device directory)
+   */
+  async deleteAuthState(tenantId: string, deviceId: string): Promise<void> {
+    const deviceDir = this.getDeviceDir(tenantId, deviceId);
+    if (fs.existsSync(deviceDir)) {
+      fs.rmSync(deviceDir, { recursive: true, force: true });
+      logger.debug({ deviceId, tenantId }, 'Auth state deleted');
+    }
+  }
+
+  /**
+   * Delete session dari semua kemungkinan lokasi (tenant/device + legacy + scan).
+   * Dipakai untuk admin cleanup / kompatibilitas.
+   */
+  async deleteAnyAuthState(deviceId: string, tenantId?: string): Promise<void> {
+    const candidates = new Set<string>();
+
+    if (tenantId) {
+      candidates.add(this.getDeviceDir(tenantId, deviceId));
+    }
+
+    candidates.add(this.getLegacyDeviceDir(deviceId));
+
+    try {
+      // cari juga di layout baru, kalau tenantId tidak diberikan
+      const scan = await this.scanSessions();
+      for (const s of scan) {
+        if (s.deviceId === deviceId) {
+          candidates.add(s.sessionDir);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    for (const dir of candidates) {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+
+    logger.debug({ deviceId, tenantId, count: candidates.size }, 'Auth state cleanup completed');
   }
 
   /**
    * Check apakah device punya auth state
    */
-  async hasAuthState(deviceId: string): Promise<boolean> {
-    const stmt = this.db.prepare(`
-      SELECT device_id FROM device_sessions WHERE device_id = ?
-    `);
+  async hasAuthState(tenantId: string, deviceId: string): Promise<boolean> {
+    const credsFile = this.getFilePath(tenantId, deviceId, 'creds.json');
+    return fs.existsSync(credsFile);
+  }
 
-    const row = stmt.get(deviceId);
-    return !!row;
+  async hasAnyAuthState(deviceId: string, tenantId?: string): Promise<boolean> {
+    if (tenantId && (await this.hasAuthState(tenantId, deviceId))) return true;
+    return fs.existsSync(this.getLegacyFilePath(deviceId, 'creds.json'));
   }
 }
 
 /**
- * Create Baileys-compatible auth state untuk useMultiFileAuthState
+ * Create Baileys-compatible auth state dengan file storage
+ * Menggunakan Baileys built-in useMultiFileAuthState
  */
 export async function useDatabaseAuthState(
+  tenantId: string,
   deviceId: string,
   authStore: BaileysAuthStore
 ): Promise<{
   state: AuthenticationState;
   saveCreds: () => Promise<void>;
 }> {
-  // Load existing state atau create new
-  let authState = await authStore.loadAuthState(deviceId);
+  // Use Baileys standard file-based auth state
+  const sessionDir = authStore.resolveSessionDir(tenantId, deviceId);
+  const { state, saveCreds: baileysJump } = await useMultiFileAuthState(sessionDir);
 
-  if (!authState) {
-    // Initialize empty state
-    authState = {
-      creds: {
-        noiseKey: {
-          private: new Uint8Array(32),
-          public: new Uint8Array(32),
-        },
-        signedIdentityKey: {
-          private: new Uint8Array(32),
-          public: new Uint8Array(32),
-        },
-        signedPreKey: {
-          keyPair: {
-            private: new Uint8Array(32),
-            public: new Uint8Array(32),
-          },
-          keyId: 1,
-          signature: new Uint8Array(64),
-        },
-        registrationId: 0,
-        advSecretKey: '',
-        me: undefined,
-        account: undefined,
-        signalIdentities: [],
-        myAppStateKeyId: '',
-        firstUnuploadedPreKeyId: 1,
-        nextPreKeyId: 1,
-        lastAccountSyncTimestamp: 0,
-        platform: 'unknown',
-      } as any,
-      keys: {
-        get: async (_type: string, _ids: string[]) => {
-          return {};
-        },
-        set: async (_data: any) => {
-          // Keys will be persisted via saveCreds
-        },
-      } as any,
-    };
-  }
-
-  // In-memory keys storage
-  // In-memory key ops removed (not used)
+  // Wrap saveCreds untuk tambahan logging
+  const saveCreds = async () => {
+    try {
+      await baileysJump();
+      logger.debug({ deviceId }, 'Credentials saved to file');
+    } catch (error) {
+      logger.error({ error, deviceId }, 'Failed to save credentials');
+      throw error;
+    }
+  };
 
   return {
-    state: authState,
-    saveCreds: async () => {
-      await authStore.saveAuthState(deviceId, authState!);
-    },
+    state,
+    saveCreds,
   };
 }

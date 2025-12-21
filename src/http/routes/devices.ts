@@ -2,11 +2,12 @@ import { FastifyInstance } from 'fastify';
 import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
 import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
 import { deviceManager } from '../../baileys/device-manager';
-import { DeviceRepository, AuditLogRepository } from '../../storage/repositories';
+import { DeviceRepository, AuditLogRepository, DeviceSessionRepository } from '../../storage/repositories';
 import { AppError, ErrorCode, StandardResponse } from '../../types';
 
 const deviceRepo = new DeviceRepository();
 const auditRepo = new AuditLogRepository();
+const deviceSessionRepo = new DeviceSessionRepository();
 
 export async function registerDeviceRoutes(server: FastifyInstance): Promise<void> {
   // All device routes require tenant authentication
@@ -73,6 +74,76 @@ export async function registerDeviceRoutes(server: FastifyInstance): Promise<voi
           last_seen: d.last_seen,
         })),
         count: devices.length,
+      },
+      requestId: request.requestId,
+    };
+
+    reply.send(response);
+  });
+
+  // List session metadata untuk semua device tenant
+  server.get('/v1/devices/sessions', {
+    schema: {
+      tags: ['devices'],
+      description: 'List session metadata untuk semua device milik tenant (mapping device -> folder session Baileys)',
+      security: [{ apiKey: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', minimum: 1, maximum: 200, default: 50 },
+          offset: { type: 'number', minimum: 0, default: 0 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                sessions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      device_id: { type: 'string' },
+                      tenant_id: { type: 'string' },
+                      session_kind: { type: 'string' },
+                      session_dir: { type: 'string' },
+                      wa_jid: { type: 'string' },
+                      wa_name: { type: 'string' },
+                      updated_at: { type: 'number' },
+                    },
+                  },
+                },
+                count: { type: 'number' },
+              },
+            },
+            requestId: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { limit = 50, offset = 0 } = request.query as { limit?: number; offset?: number };
+    const tenantId = request.tenant!.id;
+
+    const sessions = deviceSessionRepo.findByTenant(tenantId, limit, offset);
+
+    const response: StandardResponse = {
+      success: true,
+      data: {
+        sessions: sessions.map(s => ({
+          device_id: s.device_id,
+          tenant_id: (s.tenant_id || tenantId) as string,
+          session_kind: s.session_kind || 'baileys_multifile',
+          session_dir: s.session_dir || '',
+          wa_jid: s.wa_jid || '',
+          wa_name: s.wa_name || '',
+          updated_at: s.updated_at,
+        })),
+        count: sessions.length,
       },
       requestId: request.requestId,
     };
@@ -475,6 +546,87 @@ export async function registerDeviceRoutes(server: FastifyInstance): Promise<voi
         last_disconnect_at: connectionInfo.lastDisconnectAt,
         last_error: connectionInfo.lastError,
         uptime: connectionInfo.uptime,
+      },
+      requestId: request.requestId,
+    };
+
+    reply.send(response);
+  });
+
+  // Get session metadata (device -> session folder mapping)
+  server.get<{ Params: { deviceId: string } }>('/v1/devices/:deviceId/session', {
+    preHandler: verifyDeviceOwnership,
+    schema: {
+      tags: ['devices'],
+      description: 'Get session metadata untuk device (mapping ke folder sessions Baileys)',
+      security: [{ apiKey: [] }],
+      params: {
+        type: 'object',
+        required: ['deviceId'],
+        properties: {
+          deviceId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                has_session: { type: 'boolean' },
+                session: {
+                  anyOf: [
+                    { type: 'null' },
+                    {
+                      type: 'object',
+                      properties: {
+                        device_id: { type: 'string' },
+                        tenant_id: { type: 'string' },
+                        session_kind: { type: 'string' },
+                        session_dir: { type: 'string' },
+                        wa_jid: { type: 'string' },
+                        wa_name: { type: 'string' },
+                        updated_at: { type: 'number' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            requestId: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { deviceId } = request.params;
+    const tenantId = request.tenant!.id;
+
+    // Ensure device exists for tenant (middleware already checks ownership, but keep consistent API errors)
+    const device = deviceRepo.findById(deviceId, tenantId);
+    if (!device) {
+      throw new AppError(ErrorCode.NOT_FOUND, 'Device not found', 404);
+    }
+
+    const session = deviceSessionRepo.findByDeviceId(deviceId);
+
+    const response: StandardResponse = {
+      success: true,
+      data: {
+        has_session: !!session,
+        session: session
+          ? {
+              device_id: session.device_id,
+              tenant_id: session.tenant_id || tenantId,
+              session_kind: session.session_kind || 'baileys_multifile',
+              session_dir: session.session_dir || '',
+              wa_jid: session.wa_jid || '',
+              wa_name: session.wa_name || '',
+              updated_at: session.updated_at,
+            }
+          : null,
       },
       requestId: request.requestId,
     };

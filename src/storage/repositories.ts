@@ -34,6 +34,16 @@ export interface AuditLog {
   created_at: number;
 }
 
+export interface DeviceSessionMeta {
+  device_id: string;
+  updated_at: number;
+  tenant_id?: string | null;
+  session_kind?: string | null;
+  session_dir?: string | null;
+  wa_jid?: string | null;
+  wa_name?: string | null;
+}
+
 export class TenantRepository {
   private db = getDatabase();
 
@@ -182,5 +192,40 @@ export class AuditLogRepository {
       'SELECT * FROM audit_logs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
     );
     return stmt.all(tenantId, limit, offset) as AuditLog[];
+  }
+}
+
+export class DeviceSessionRepository {
+  private db = getDatabase();
+
+  /**
+   * Ambil metadata session (kalau ada) untuk device.
+   * Ownership dicek di middleware/route.
+   */
+  findByDeviceId(deviceId: string): DeviceSessionMeta | null {
+    const stmt = this.db.prepare(`
+      SELECT device_id, updated_at, tenant_id, session_kind, session_dir, wa_jid, wa_name
+      FROM device_sessions
+      WHERE device_id = ?
+    `);
+
+    return stmt.get(deviceId) as DeviceSessionMeta | null;
+  }
+
+  /**
+   * List semua session metadata untuk tenant.
+   * Join ke tabel devices untuk memastikan device benar-benar milik tenant.
+   */
+  findByTenant(tenantId: string, limit = 100, offset = 0): DeviceSessionMeta[] {
+    const stmt = this.db.prepare(`
+      SELECT ds.device_id, ds.updated_at, ds.tenant_id, ds.session_kind, ds.session_dir, ds.wa_jid, ds.wa_name
+      FROM device_sessions ds
+      INNER JOIN devices d ON d.id = ds.device_id
+      WHERE d.tenant_id = ?
+      ORDER BY ds.updated_at DESC
+      LIMIT ? OFFSET ?
+    `);
+
+    return stmt.all(tenantId, limit, offset) as DeviceSessionMeta[];
   }
 }

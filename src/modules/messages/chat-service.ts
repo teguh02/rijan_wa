@@ -167,16 +167,8 @@ export class ChatService {
    */
   private getSocket(deviceId: string): WASocket {
     const state = deviceManager.getDeviceState(deviceId);
-    if (!state) {
-      throw new Error('Device not found');
-    }
-
-    const instance = (deviceManager as any).devices.get(deviceId);
-    if (!instance?.socket) {
-      throw new Error('Device socket not available');
-    }
-
-    return instance.socket;
+    if (!state) throw new Error('Device not found');
+    return deviceManager.getSocketOrThrow(deviceId);
   }
 }
 

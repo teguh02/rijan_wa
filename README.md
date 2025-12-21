@@ -10,7 +10,7 @@ WhatsApp Gateway berbasis Baileys dengan arsitektur multi-tenant dan multi-devic
 - **Web Framework**: Fastify (high-performance, low-overhead)
 - **WhatsApp Engine**: @whiskeysockets/baileys (socket-based, no browser automation)
 - **Database**: SQLite dengan better-sqlite3
-- **Security**: HMAC-SHA256, AES-256-GCM encryption, PBKDF2 key derivation
+- **Security**: HMAC-SHA256 (tenant API keys), constant-time comparisons, optional AES-256-GCM utilities
 - **API Documentation**: OpenAPI 3.0 (Swagger)
 - **Deployment**: Docker + Docker Compose
 
@@ -101,20 +101,23 @@ signature = HMAC-SHA256(MASTER_KEY, payload)
 - Tidak perlu menyimpan plaintext secret
 - Constant-time comparison untuk mencegah timing attacks
 
-### 3. Credential Encryption
+### 3. WhatsApp Sessions (Baileys Standard)
 
-Auth state Baileys dienkripsi menggunakan AES-256-GCM:
+Auth state Baileys menggunakan metode standar `useMultiFileAuthState` (file JSON di filesystem), bukan disimpan sebagai blob terenkripsi di database.
 
-**Skema:**
+**Struktur session:**
 ```
-encryption_key = PBKDF2(MASTER_KEY, salt, 100000 iterations, SHA256)
-encrypted_data = AES-256-GCM(plaintext, encryption_key, random_iv)
+./sessions/{tenantId}/{deviceId}/
+  creds.json
+  pre-key-*.json
+  sender-key-*.json
+  app-state-sync-*.json
 ```
 
-**Storage:**
-- Encrypted blob di database
-- IV (12 bytes) dan auth tag disimpan terpisah
-- Salt unik per device
+**Database** hanya menyimpan metadata untuk memudahkan identifikasi relasi tenant → device → session:
+- `device_sessions.session_dir` (path folder session)
+- `device_sessions.wa_jid`, `device_sessions.wa_name` (jika tersedia)
+- `device_sessions.session_kind` (format session)
 
 ## 🔄 Alur Request
 
@@ -192,9 +195,8 @@ Response
 - Phone number setelah QR scan
 
 ### Device Sessions
-- Encrypted Baileys auth state
-- Versioned encryption
-- Salt untuk key derivation
+- File-based Baileys auth state (standard multi-file)
+- Metadata session disimpan di `device_sessions` (mapping tenant/device ke folder session)
 
 ### Messages Outbox
 - Queue untuk outgoing messages

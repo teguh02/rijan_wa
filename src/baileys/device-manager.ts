@@ -32,8 +32,49 @@ export class DeviceManager {
   static getInstance(): DeviceManager {
     if (!DeviceManager.instance) {
       DeviceManager.instance = new DeviceManager();
+      // Auto-sync existing sessions on creation (non-blocking)
+      DeviceManager.instance.autoSyncSessions().catch(error => {
+        logger.error({ error }, 'Failed to auto-sync sessions on startup');
+      });
     }
     return DeviceManager.instance;
+  }
+
+  /**
+   * Ambil socket aktif untuk device.
+   * Dipakai oleh service internal (messages, chats) agar tidak akses private map via `as any`.
+   */
+  getSocketOrThrow(deviceId: string): WASocket {
+    const instance = this.devices.get(deviceId);
+    if (!instance?.socket || instance.socket.ws.isClosed) {
+      throw new Error('Device socket not available');
+    }
+    return instance.socket;
+  }
+
+  private async cleanupDeviceInstance(deviceId: string, options?: { releaseLock?: boolean }): Promise<void> {
+    const instance = this.devices.get(deviceId);
+    if (!instance) return;
+
+    const releaseLock = options?.releaseLock !== false;
+
+    try {
+      if (instance.lockRefreshInterval) {
+        clearInterval(instance.lockRefreshInterval);
+      }
+    } catch {
+      // ignore
+    }
+
+    if (releaseLock) {
+      try {
+        await this.distributedLock.releaseLock(deviceId);
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to release device lock during cleanup');
+      }
+    }
+
+    this.devices.delete(deviceId);
   }
 
   /**
@@ -54,6 +95,11 @@ export class DeviceManager {
         // Release lock before returning
         await this.distributedLock.releaseLock(deviceId);
         return existing.state;
+      }
+
+      // If there's a stale instance (socket closed), clear its intervals before starting a fresh socket
+      if (existing) {
+        await this.cleanupDeviceInstance(deviceId, { releaseLock: false });
       }
 
       // Verify device exists dan belongs to tenant
@@ -88,8 +134,8 @@ export class DeviceManager {
     this.devices.set(deviceId, instance);
 
     try {
-      // Load auth state
-      const { state: authState, saveCreds } = await useDatabaseAuthState(deviceId, this.authStore);
+      // Load auth state (standard Baileys multi-file) - namespaced by tenant/device
+      const { state: authState, saveCreds } = await useDatabaseAuthState(tenantId, deviceId, this.authStore);
 
       // Get Baileys version
       const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -100,14 +146,14 @@ export class DeviceManager {
         version,
         auth: {
           creds: authState.creds,
-          keys: makeCacheableSignalKeyStore(authState.keys, logger as any),
+          keys: makeCacheableSignalKeyStore(authState.keys, logger),
         },
         printQRInTerminal: false,
         browser: Browsers.ubuntu('Rijan WA Gateway'),
         getMessage: async (_key) => {
           return { conversation: '' };
         },
-        logger: logger as any,
+        logger,
         markOnlineOnConnect: false,
       });
 
@@ -126,7 +172,7 @@ export class DeviceManager {
       instance.lockRefreshInterval = lockRefreshInterval;
 
       // Setup event handlers
-      this.setupEventHandlers(deviceId, socket, saveCreds);
+      this.setupEventHandlers(deviceId, tenantId, socket, saveCreds);
 
       // Update device status
       this.deviceRepo.updateStatus(deviceId, 'connecting');
@@ -166,18 +212,10 @@ export class DeviceManager {
         instance.socket.ws.close();
       }
 
-      // Clear lock refresh interval
-      if (instance.lockRefreshInterval) {
-        clearInterval(instance.lockRefreshInterval);
-      }
-
-      // Release distributed lock
-      await this.distributedLock.releaseLock(deviceId);
-
       instance.state.status = DeviceStatus.DISCONNECTED;
       this.deviceRepo.updateStatus(deviceId, 'disconnected');
 
-      this.devices.delete(deviceId);
+      await this.cleanupDeviceInstance(deviceId, { releaseLock: true });
       logger.info({ deviceId }, 'Device stopped');
     } catch (error) {
       logger.error({ error, deviceId }, 'Error stopping device');
@@ -201,8 +239,13 @@ export class DeviceManager {
       await this.stopDevice(deviceId);
     }
 
-    // Delete auth state
-    await this.authStore.deleteAuthState(deviceId);
+    // Delete auth state (tenant-scoped if possible)
+    const device = this.deviceRepo.findById(deviceId);
+    if (device?.tenant_id) {
+      await this.authStore.deleteAuthState(device.tenant_id, deviceId);
+    } else {
+      await this.authStore.deleteAnyAuthState(deviceId);
+    }
 
     // Update device
     this.deviceRepo.updateStatus(deviceId, 'disconnected');
@@ -222,17 +265,29 @@ export class DeviceManager {
   /**
    * Request QR code untuk pairing
    */
-  async requestQrCode(deviceId: string, tenantId: string): Promise<string | null> {
+  async requestQrCode(deviceId: string, _tenantId: string): Promise<string | null> {
     let instance = this.devices.get(deviceId);
 
-    // Start device jika belum running
+    // Device harus sudah di-start sebelumnya
     if (!instance) {
-      await this.startDevice(deviceId, tenantId);
-      instance = this.devices.get(deviceId);
+      throw new Error('Device is not started. Call /start endpoint first');
     }
 
-    if (!instance) {
-      throw new Error('Failed to start device');
+    // Device harus dalam status connecting, jangan kalau sudah connected
+    if (instance.state.status === DeviceStatus.CONNECTED) {
+      throw new Error('Device already connected. Logout first to re-pair');
+    }
+
+    // Jika QR sudah pernah dibuat, status biasanya sudah berubah ke PAIRING.
+    // Izinkan CONNECTING maupun PAIRING.
+    if (instance.state.status !== DeviceStatus.CONNECTING && instance.state.status !== DeviceStatus.PAIRING) {
+      throw new Error(`Device must be in connecting/pairing status, currently: ${instance.state.status}`);
+    }
+
+    // Fast path: kalau QR sudah ada, langsung return
+    if (instance.state.lastQrCode) {
+      instance.state.pairingMethod = PairingMethod.QR;
+      return instance.state.lastQrCode;
     }
 
     // Wait for QR code (max 30 seconds)
@@ -245,14 +300,10 @@ export class DeviceManager {
         return instance.state.lastQrCode;
       }
 
-      if (instance.state.status === DeviceStatus.CONNECTED) {
-        throw new Error('Device already connected');
-      }
-
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    throw new Error('QR code timeout');
+    throw new Error('QR code timeout - Device did not generate QR code within 30 seconds');
   }
 
   /**
@@ -260,19 +311,27 @@ export class DeviceManager {
    */
   async requestPairingCode(
     deviceId: string,
-    tenantId: string,
+    _tenantId: string,
     phoneNumber: string
   ): Promise<string> {
     let instance = this.devices.get(deviceId);
 
-    // Start device jika belum running
+    // Device harus sudah di-start sebelumnya
     if (!instance) {
-      await this.startDevice(deviceId, tenantId);
-      instance = this.devices.get(deviceId);
+      throw new Error('Device is not started. Call /start endpoint first');
+    }
+
+    // Device harus dalam status connecting, jangan kalau sudah connected
+    if (instance.state.status === DeviceStatus.CONNECTED) {
+      throw new Error('Device already connected. Logout first to re-pair');
+    }
+
+    if (instance.state.status !== DeviceStatus.CONNECTING) {
+      throw new Error(`Device must be in connecting status, currently: ${instance.state.status}`);
     }
 
     if (!instance?.socket) {
-      throw new Error('Failed to start device');
+      throw new Error('Device socket is not initialized');
     }
 
     // Clean phone number
@@ -320,6 +379,7 @@ export class DeviceManager {
    */
   private setupEventHandlers(
     deviceId: string,
+    tenantId: string,
     socket: WASocket,
     saveCreds: () => Promise<void>
   ): void {
@@ -370,6 +430,8 @@ export class DeviceManager {
 
         if (shouldReconnect) {
           logger.info({ deviceId }, 'Reconnecting device...');
+          // Tear down the old instance (intervals, map entry) but keep the distributed lock
+          await this.cleanupDeviceInstance(deviceId, { releaseLock: false });
           setTimeout(() => {
             this.startDevice(deviceId, instance.state.tenantId).catch((error) => {
               logger.error({ error, deviceId }, 'Reconnection failed');
@@ -378,7 +440,7 @@ export class DeviceManager {
         } else {
           instance.state.status = DeviceStatus.DISCONNECTED;
           this.deviceRepo.updateStatus(deviceId, 'disconnected');
-          this.devices.delete(deviceId);
+          await this.cleanupDeviceInstance(deviceId, { releaseLock: true });
         }
       }
     });
@@ -387,7 +449,10 @@ export class DeviceManager {
     socket.ev.on('creds.update', async () => {
       try {
         await saveCreds();
-        logger.debug({ deviceId }, 'Credentials updated');
+        logger.debug({ deviceId }, 'Credentials updated and saved');
+        
+        // Sync session to database
+        await this.syncSessionToDatabase(tenantId, deviceId);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to save credentials');
       }
@@ -605,7 +670,8 @@ export class DeviceManager {
   async recoverDevices(): Promise<void> {
     logger.info('Recovering devices from previous session...');
 
-    const stmt = this.authStore['db'].prepare(`
+    const db = (await import('../storage/database')).getDatabase();
+    const stmt = db.prepare(`
       SELECT d.id, d.tenant_id, d.status
       FROM devices d
       INNER JOIN device_sessions ds ON d.id = ds.device_id
@@ -623,6 +689,110 @@ export class DeviceManager {
       } catch (error) {
         logger.error({ error, deviceId: device.id }, 'Failed to recover device');
       }
+    }
+  }
+
+  /**
+   * Sync session metadata ke database
+   * Dipanggil setiap kali credentials updated
+   */
+  private async syncSessionToDatabase(tenantId: string, deviceId: string): Promise<void> {
+    try {
+      const metadata = await this.authStore.getSessionMetadata(tenantId, deviceId);
+      if (!metadata || !metadata.hasSession) {
+        logger.warn({ deviceId, tenantId }, 'Session not found in filesystem');
+        return;
+      }
+
+      const identity = await this.authStore.getCredsIdentity(tenantId, deviceId);
+      const sessionDir = this.authStore.resolveSessionDir(tenantId, deviceId);
+
+      const db = (await import('../storage/database')).getDatabase();
+      const now = Math.floor(Date.now() / 1000);
+
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO device_sessions
+        (device_id, auth_encrypted, auth_iv, auth_tag, enc_version, salt, updated_at, tenant_id, session_kind, session_dir, wa_jid, wa_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      stmt.run(
+        deviceId,
+        'SESSION_FILE_BASED',
+        'N/A',
+        'N/A',
+        1,
+        'N/A',
+        now,
+        tenantId,
+        'baileys_multifile',
+        sessionDir,
+        identity?.waJid || null,
+        identity?.waName || null
+      );
+
+      logger.debug(
+        { deviceId, tenantId, sessionDir, updatedAt: metadata.updatedAt, waJid: identity?.waJid },
+        'Session synced to database'
+      );
+    } catch (error) {
+      logger.error({ error, deviceId, tenantId }, 'Failed to sync session to database');
+    }
+  }
+
+  /**
+   * Auto-sync existing sessions dari filesystem ke database
+   * Dipanggil saat server startup
+   */
+  private async autoSyncSessions(): Promise<void> {
+    try {
+      logger.info('Auto-syncing existing sessions to database...');
+
+      // Scan filesystem untuk existing sessions
+      const sessions = await this.authStore.scanSessions();
+
+      if (sessions.length === 0) {
+        logger.info('No existing sessions found');
+        return;
+      }
+
+      logger.info({ count: sessions.length }, 'Found existing sessions, syncing...');
+
+      let syncedCount = 0;
+
+      // Sync each session metadata ke database
+      for (const session of sessions) {
+        try {
+          // Resolve tenantId untuk legacy layout
+          let tenantId = session.tenantId;
+          if (tenantId === '__LEGACY__') {
+            const device = this.deviceRepo.findById(session.deviceId);
+            if (!device) {
+              logger.warn({ deviceId: session.deviceId }, 'Skipping legacy session: device not found in DB');
+              continue;
+            }
+            tenantId = device.tenant_id;
+            // migrate folder into new layout for consistency
+            this.authStore.migrateLegacySessionDirIfNeeded(tenantId, session.deviceId);
+          }
+
+          // Pastikan device memang milik tenant itu
+          const device = this.deviceRepo.findById(session.deviceId, tenantId);
+          if (!device) {
+            logger.warn({ deviceId: session.deviceId, tenantId }, 'Skipping session: device not owned by tenant');
+            continue;
+          }
+
+          await this.syncSessionToDatabase(tenantId, session.deviceId);
+          syncedCount++;
+        } catch (error) {
+          logger.error({ error, session }, 'Failed to sync session');
+        }
+      }
+
+      logger.info({ scanned: sessions.length, synced: syncedCount }, 'Sessions auto-sync completed');
+    } catch (error) {
+      logger.error({ error }, 'Failed to auto-sync sessions');
     }
   }
 }
