@@ -211,13 +211,14 @@ export class MessageService {
 
     const normalizedRequest = await this.normalizeSendMediaRequest(request);
     const jid = this.normalizeJid(normalizedRequest.to);
+    const messageType = normalizedRequest.mediaType as MessageType;
 
     // Add to outbox
     const message = this.messageRepo.addToOutbox({
       tenant_id: tenantId,
       device_id: deviceId,
       jid,
-      message_type: normalizedRequest.mediaType!.toUpperCase() as MessageType,
+      message_type: messageType,
       payload: JSON.stringify(normalizedRequest),
       status: MessageStatus.QUEUED,
       retries: 0,
@@ -225,7 +226,7 @@ export class MessageService {
     });
 
     // Process send
-    this.processSendMedia(deviceId, message, normalizedRequest.mediaType!.toUpperCase() as MessageType).catch((error) => {
+    this.processSendMedia(deviceId, message, messageType).catch((error) => {
       logger.error({ error, messageId: message.id }, 'Failed to send media message');
     });
 
@@ -311,8 +312,8 @@ export class MessageService {
    * Send location message
    */
   async sendLocation(
-      deviceId: string,
     tenantId: string,
+    deviceId: string,
     request: SendLocationMessageRequest,
     idempotencyKey?: string
   ): Promise<{ messageId: string; status: MessageStatus }> {
@@ -366,8 +367,8 @@ export class MessageService {
    * Send contact message
    */
   async sendContact(
-      deviceId: string,
     tenantId: string,
+    deviceId: string,
     request: SendContactMessageRequest,
     idempotencyKey?: string
   ): Promise<{ messageId: string; status: MessageStatus }> {
@@ -419,8 +420,8 @@ export class MessageService {
    * Send reaction
    */
   async sendReaction(
-      deviceId: string,
     _tenantId: string,
+    deviceId: string,
     request: SendReactionMessageRequest
   ): Promise<{ messageId: string; status: MessageStatus }> {
     const socket = this.getSocket(deviceId);
