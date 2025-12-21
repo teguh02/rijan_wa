@@ -155,11 +155,16 @@ export async function startServer(): Promise<void> {
     // @ts-ignore: Module resolves at runtime; TS type declarations not required
     const { mediaRoutes } = await import('./routes/media');
 
+    // Register health routes FIRST (public, no auth required)
+    await server.register(healthRoutes);
+    
+    // Then register admin routes
     await registerAdminRoutes(server);
+    
+    // Then register device routes (requires tenant auth - global hook)
     await registerDeviceRoutes(server);
     await server.register(messagesRoutes, { prefix: '/v1/devices' });
     await server.register(mediaRoutes, { prefix: '/v1/devices' });
-    await server.register(healthRoutes);
     await server.register(webhooksRoutes, { prefix: '/v1' });
     await server.register(eventsRoutes, { prefix: '/v1/devices/:deviceId/events' });
     await server.register(groupsRoutes, { prefix: '/v1/devices/:deviceId/groups' });

@@ -27,6 +27,12 @@ export async function verifyTenantApiKey(
   request: FastifyRequest,
   _reply: FastifyReply
 ): Promise<void> {
+  // Skip public endpoints yang tidak memerlukan auth
+  const publicPaths = ['/health', '/ready', '/metrics', '/docs'];
+  if (publicPaths.some(path => request.url.startsWith(path))) {
+    return;
+  }
+
   // Extract API key dari header
   let apiKey: string | undefined;
   

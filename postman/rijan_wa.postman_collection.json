@@ -1,0 +1,1539 @@
+{
+  "info": {
+    "name": "Rijan WA Gateway",
+    "description": "WhatsApp Gateway berbasis Baileys - Multi-tenant & Multi-device",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Public (No Auth)",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/health",
+              "host": ["{{BASE_URL}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ready Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ready",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ready"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/metrics",
+              "host": ["{{BASE_URL}}"],
+              "path": ["metrics"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin (X-Master-Key)",
+      "item": [
+        {
+          "name": "Tenants",
+          "item": [
+            {
+              "name": "Create Tenant",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", () => {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is valid JSON\", () => {",
+                      "  pm.response.to.have.jsonBody();",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.tenant && jsonData.data.tenant.id) {",
+                      "    pm.variables.set('TENANT_ID', jsonData.data.tenant.id);",
+                      "    console.log('✓ TENANT_ID saved:', jsonData.data.tenant.id);",
+                      "  }",
+                      "  if (jsonData.data && jsonData.data.api_key) {",
+                      "    pm.variables.set('TENANT_API_KEY', jsonData.data.api_key);",
+                      "    console.log('✓ TENANT_API_KEY saved');",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Tenant Demo\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Tenants",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants?limit=20&offset=0",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Tenant by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants", "{{TENANT_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Suspend Tenant",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/suspend",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants", "{{TENANT_ID}}", "suspend"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Activate Tenant",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/activate",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants", "{{TENANT_ID}}", "activate"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Tenant",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants", "{{TENANT_ID}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Devices (Admin Provisioning)",
+          "item": [
+            {
+              "name": "Create Device",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 201\", () => {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is valid JSON\", () => {",
+                      "  pm.response.to.have.jsonBody();",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.device && jsonData.data.device.id) {",
+                      "    pm.variables.set('DEVICE_ID', jsonData.data.device.id);",
+                      "    console.log('✓ DEVICE_ID saved:', jsonData.data.device.id);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"label\": \"Device Demo 1\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/devices",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants", "{{TENANT_ID}}", "devices"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Device (Admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-Master-Key",
+                    "value": "{{MASTER_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/devices/{{DEVICE_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["admin", "tenants", "{{TENANT_ID}}", "devices", "{{DEVICE_ID}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tenant (Authorization Bearer)",
+      "item": [
+        {
+          "name": "Devices",
+          "item": [
+            {
+              "name": "List Devices",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices?limit=20&offset=0",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Device by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Device Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/health",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "health"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Start Device",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/start",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "start"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Stop Device",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/stop",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "stop"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Logout Device",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/logout",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "logout"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get QR Code for Pairing",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 409 (device already connected)\", () => {",
+                      "  pm.expect([200, 409]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.qr_code) {",
+                      "    pm.variables.set('QR_CODE', jsonData.data.qr_code);",
+                      "    console.log('✓ QR_CODE saved');",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/pairing/qr",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "pairing", "qr"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Request Pairing Code",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 409 (device already connected)\", () => {",
+                      "  pm.expect([200, 409]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.pairing_code) {",
+                      "    pm.variables.set('PAIRING_CODE', jsonData.data.pairing_code);",
+                      "    console.log('✓ PAIRING_CODE saved:', jsonData.data.pairing_code);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone_number\": \"{{PHONE_NUMBER}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/pairing/code",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "pairing", "code"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Messaging",
+          "item": [
+            {
+              "name": "Send Text Message",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.variables.get('IDEMPOTENCY_KEY')) {",
+                      "  pm.variables.set('IDEMPOTENCY_KEY', 'idem-' + Date.now());",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 201 or 409 (device not connected)\", () => {",
+                      "  pm.expect([200, 201, 409, 422]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is valid JSON\", () => {",
+                      "  pm.response.to.have.jsonBody();",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200 || pm.response.code === 201) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.message_id) {",
+                      "    pm.variables.set('MESSAGE_ID', jsonData.data.message_id);",
+                      "    console.log('✓ MESSAGE_ID saved:', jsonData.data.message_id);",
+                      "  }",
+                      "  if (jsonData.data && jsonData.data.wa_message_id) {",
+                      "    pm.variables.set('WA_MESSAGE_ID', jsonData.data.wa_message_id);",
+                      "    console.log('✓ WA_MESSAGE_ID saved:', jsonData.data.wa_message_id);",
+                      "  }",
+                      "} else if (pm.response.code === 409) {",
+                      "  console.log('⚠ Device not connected - need to pair first');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{IDEMPOTENCY_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"text\": \"Halo dari rijan_wa Postman!\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/text",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "text"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send Media Message",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.variables.get('IDEMPOTENCY_KEY')) {",
+                      "  pm.variables.set('IDEMPOTENCY_KEY', 'idem-' + Date.now());",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 201 or 409 (device not connected)\", () => {",
+                      "  pm.expect([200, 201, 409, 422]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200 || pm.response.code === 201) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.message_id) {",
+                      "    pm.variables.set('MESSAGE_ID', jsonData.data.message_id);",
+                      "    console.log('✓ MESSAGE_ID saved:', jsonData.data.message_id);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{IDEMPOTENCY_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"mediaUrl\": \"https://via.placeholder.com/600.png\",\n  \"caption\": \"Test Media\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/media",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "media"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send Location Message",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.variables.get('IDEMPOTENCY_KEY')) {",
+                      "  pm.variables.set('IDEMPOTENCY_KEY', 'idem-' + Date.now());",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{IDEMPOTENCY_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"latitude\": -6.200000,\n  \"longitude\": 106.816666,\n  \"name\": \"Jakarta\",\n  \"address\": \"DKI Jakarta\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/location",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "location"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send Contact Message",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "if (!pm.variables.get('IDEMPOTENCY_KEY')) {",
+                      "  pm.variables.set('IDEMPOTENCY_KEY', 'idem-' + Date.now());",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{IDEMPOTENCY_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"contacts\": [\n    {\n      \"displayName\": \"Teguh\",\n      \"phoneNumber\": \"{{PHONE_NUMBER}}\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/contact",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "contact"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send Reaction Message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"messageId\": \"{{WA_MESSAGE_ID}}\",\n  \"emoji\": \"👍\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/reaction",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "reaction"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Message",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/{{MESSAGE_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "{{MESSAGE_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Message Status",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/{{MESSAGE_ID}}/status",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "{{MESSAGE_ID}}", "status"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send Poll Message",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 201 or 404/501 (not implemented)\", () => {",
+                      "  pm.expect([200, 201, 404, 501, 409, 422]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 404 || pm.response.code === 501) {",
+                      "  console.log('⚠ Poll endpoint not yet implemented');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"question\": \"Poll test\",\n  \"options\": [\"A\", \"B\", \"C\"]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/poll",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "poll"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Chats",
+          "item": [
+            {
+              "name": "List Chats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats?limit=20&offset=0",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Chat Messages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/messages?limit=20&before=",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "messages"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "before",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Chat as Read",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/mark-read",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "mark-read"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Archive Chat",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"archived\": true\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/archive",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "archive"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mute Chat",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"muted\": true,\n  \"durationSeconds\": 3600\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/mute",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "mute"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Set Presence",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"presence\": \"composing\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/presence",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "presence"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Inbound Events (Pull)",
+          "item": [
+            {
+              "name": "Pull Events",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/events?since={{SINCE}}&type={{EVENT_TYPE}}&limit=100",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "events"],
+                  "query": [
+                    {
+                      "key": "since",
+                      "value": "{{SINCE}}"
+                    },
+                    {
+                      "key": "type",
+                      "value": "{{EVENT_TYPE}}"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "100"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Webhooks",
+          "item": [
+            {
+              "name": "Create Webhook",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 201\", () => {",
+                      "  pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is valid JSON\", () => {",
+                      "  pm.response.to.have.jsonBody();",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200 || pm.response.code === 201) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.id) {",
+                      "    pm.variables.set('WEBHOOK_ID', jsonData.data.id);",
+                      "    console.log('✓ WEBHOOK_ID saved:', jsonData.data.id);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"{{WEBHOOK_URL}}\",\n  \"events\": [\"message.received\", \"device.connected\"],\n  \"secret\": \"whsec_demo_123\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/webhooks",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "webhooks"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Webhooks",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/webhooks",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "webhooks"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Webhook by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "webhooks", "{{WEBHOOK_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Webhook",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"url\": \"{{WEBHOOK_URL}}\",\n  \"events\": [\"message.received\", \"message.updated\", \"device.disconnected\"],\n  \"enabled\": true,\n  \"timeoutMs\": 5000,\n  \"maxRetries\": 3\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "webhooks", "{{WEBHOOK_ID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Webhook",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "webhooks", "{{WEBHOOK_ID}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Groups",
+          "item": [
+            {
+              "name": "Create Group",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 201 or 409 (device not connected)\", () => {",
+                      "  pm.expect([200, 201, 409, 422]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200 || pm.response.code === 201) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.groupJid) {",
+                      "    pm.variables.set('GROUP_JID', jsonData.data.groupJid);",
+                      "    console.log('✓ GROUP_JID saved:', jsonData.data.groupJid);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"subject\": \"Rijan Group Demo\",\n  \"participants\": [\"{{JID}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/create",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "create"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Group Info",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/{{GROUP_JID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "{{GROUP_JID}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Add Group Participants",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"participants\": [\"{{JID}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/{{GROUP_JID}}/participants/add",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "{{GROUP_JID}}", "participants", "add"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Remove Group Participants",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"participants\": [\"{{JID}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/{{GROUP_JID}}/participants/remove",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "{{GROUP_JID}}", "participants", "remove"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Privacy",
+          "item": [
+            {
+              "name": "Get Privacy Settings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/privacy/settings",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "privacy", "settings"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Privacy Settings",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"readReceipts\": \"all\",\n  \"online\": \"all\",\n  \"lastSeen\": \"contacts\",\n  \"status\": \"contacts\",\n  \"profilePicture\": \"contacts\",\n  \"groupsAdd\": \"contacts\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/privacy/settings",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "privacy", "settings"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "MASTER_KEY",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "TENANT_API_KEY",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "TENANT_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "DEVICE_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "GROUP_JID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MESSAGE_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "WA_MESSAGE_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "JID",
+      "value": "628123456789@s.whatsapp.net",
+      "type": "string"
+    },
+    {
+      "key": "PHONE_NUMBER",
+      "value": "628123456789",
+      "type": "string"
+    },
+    {
+      "key": "WEBHOOK_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "WEBHOOK_URL",
+      "value": "https://example.com/webhook-receiver",
+      "type": "string"
+    },
+    {
+      "key": "SINCE",
+      "value": "2025-12-20T00:00:00.000Z",
+      "type": "string"
+    },
+    {
+      "key": "EVENT_TYPE",
+      "value": "message.received",
+      "type": "string"
+    },
+    {
+      "key": "IDEMPOTENCY_KEY",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "QR_CODE",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "PAIRING_CODE",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "LAST_REQUEST_ID",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set Content-Type for JSON requests",
+          "if (pm.request.body && pm.request.body.mode === 'raw') {",
+          "  pm.request.headers.add({",
+          "    key: 'Content-Type',",
+          "    value: 'application/json'",
+          "  });",
+          "}",
+          "",
+          "// Auto-generate Idempotency-Key if empty",
+          "if (!pm.variables.get('IDEMPOTENCY_KEY') || pm.variables.get('IDEMPOTENCY_KEY') === '') {",
+          "  pm.variables.set('IDEMPOTENCY_KEY', 'idem-' + Date.now());",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test: validate JSON response",
+          "if (pm.response.code !== 204 && pm.response.code !== 304) {",
+          "  try {",
+          "    pm.response.json();",
+          "  } catch (e) {",
+          "    pm.test('Response must be valid JSON', () => {",
+          "      throw new Error('Invalid JSON response: ' + e.message);",
+          "    });",
+          "  }",
+          "}",
+          "",
+          "// Save X-Request-Id header if present",
+          "const requestId = pm.response.headers.get('X-Request-Id');",
+          "if (requestId) {",
+          "  pm.variables.set('LAST_REQUEST_ID', requestId);",
+          "  console.log('✓ LAST_REQUEST_ID saved:', requestId);",
+          "}",
+          "",
+          "// Log error if response.success === false",
+          "if (pm.response.code < 400) {",
+          "  try {",
+          "    const jsonData = pm.response.json();",
+          "    if (jsonData.success === false) {",
+          "      console.error('❌ API Error:', jsonData.error);",
+          "    }",
+          "  } catch (e) {",
+          "    // Not a JSON response, skip error check",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ]
+}
