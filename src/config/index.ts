@@ -10,6 +10,7 @@ interface Config {
     port: number;
     nodeEnv: string;
     logLevel: string;
+    timezone: string;
   };
   security: {
     masterKey: string;
@@ -30,6 +31,7 @@ const config: Config = {
     port: parseInt(process.env.PORT || '3000', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
     logLevel: process.env.LOG_LEVEL || 'info',
+    timezone: process.env.TIMEZONE || 'UTC',
   },
   security: {
     masterKey: process.env.MASTER_KEY || '',

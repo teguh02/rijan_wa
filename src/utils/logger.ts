@@ -9,7 +9,7 @@ const logger = pino({
         options: {
           colorize: true,
           ignore: 'pid,hostname',
-          translateTime: 'HH:MM:ss Z',
+          translateTime: `SYS:HH:MM:ss ${config.server.timezone}`,
         },
       }
     : undefined,

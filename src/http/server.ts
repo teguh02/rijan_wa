@@ -14,7 +14,19 @@ import { closeDatabase } from '../storage/database';
 
 export async function createServer(): Promise<FastifyInstance> {
   const server = Fastify({
-    logger: logger as any,
+    logger: {
+      level: config.server.logLevel,
+      ...(config.server.nodeEnv === 'development' && {
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            ignore: 'pid,hostname',
+            translateTime: `SYS:HH:MM:ss ${config.server.timezone}`,
+          },
+        },
+      }),
+    },
     requestIdLogLabel: 'requestId',
     disableRequestLogging: true,
     trustProxy: true,
@@ -118,30 +130,6 @@ export async function createServer(): Promise<FastifyInstance> {
   // Error handler
   server.setErrorHandler(errorHandler);
 
-  // Health check route (no auth required)
-  server.get('/health', {
-    schema: {
-      tags: ['health'],
-      description: 'Health check endpoint',
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            status: { type: 'string' },
-            timestamp: { type: 'number' },
-            uptime: { type: 'number' },
-          },
-        },
-      },
-    },
-  }, async (_request, _reply) => {
-    return {
-      status: 'ok',
-      timestamp: Date.now(),
-      uptime: process.uptime(),
-    };
-  });
-
   return server;
 }
 
@@ -173,9 +161,9 @@ export async function startServer(): Promise<void> {
     await server.register(mediaRoutes, { prefix: '/v1/devices' });
     await server.register(healthRoutes);
     await server.register(webhooksRoutes, { prefix: '/v1' });
-    await server.register(eventsRoutes, { prefix: '/v1/devices/:deviceId' });
+    await server.register(eventsRoutes, { prefix: '/v1/devices/:deviceId/events' });
     await server.register(groupsRoutes, { prefix: '/v1/devices/:deviceId/groups' });
-    await server.register(privacyRoutes, { prefix: '/v1/devices/:deviceId' });
+    await server.register(privacyRoutes, { prefix: '/v1/devices/:deviceId/privacy' });
 
     await server.listen({
       port: config.server.port,
