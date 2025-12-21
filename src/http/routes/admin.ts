@@ -337,7 +337,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
 
   // Create device untuk tenant
   server.post<{ Params: { tenantId: string }; Body: { label: string } }>(
-    '/v1/admin/tenants/:tenantId/devices',
+    '/admin/tenants/:tenantId/devices',
     {
       preHandler: verifyMasterKey,
       schema: {
@@ -437,7 +437,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
 
   // Delete device
   server.delete<{ Params: { tenantId: string; deviceId: string } }>(
-    '/v1/admin/tenants/:tenantId/devices/:deviceId',
+    '/admin/tenants/:tenantId/devices/:deviceId',
     {
       preHandler: verifyMasterKey,
       schema: {
