@@ -72,7 +72,8 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
           200: {
             type: 'object',
             properties: {
-              id: { type: 'string' },
+              id: { type: 'string', description: 'Internal message ID' },
+              messageId: { type: 'string', description: 'Internal message ID (alias of id)' },
               status: { type: 'string' },
               timestamp: { type: 'number' },
               idempotencyKey: { type: 'string' },
@@ -88,9 +89,18 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       const tenantId = request.tenant!.id;
       const body = request.body;
 
+      const headerIdem = (request.headers['idempotency-key'] as string | undefined) || undefined;
+      const idempotencyKey = headerIdem || (body as any)?.idempotencyKey;
+
       try {
-        const result = await messageService.sendText(tenantId, deviceId, body);
-        return _reply.send(result);
+        const result = await messageService.sendText(tenantId, deviceId, body, idempotencyKey);
+        return _reply.send({
+          id: result.messageId,
+          messageId: result.messageId,
+          status: result.status,
+          timestamp: Date.now(),
+          idempotencyKey,
+        });
       } catch (error: any) {
         request.log.error(error, 'Failed to send text message');
         throw INTERNAL_SERVER_ERROR(error.message || 'Failed to send message');
@@ -145,7 +155,8 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
           200: {
             type: 'object',
             properties: {
-              id: { type: 'string' },
+              id: { type: 'string', description: 'Internal message ID' },
+              messageId: { type: 'string', description: 'Internal message ID (alias of id)' },
               status: { type: 'string' },
               timestamp: { type: 'number' },
               idempotencyKey: { type: 'string' },
@@ -161,6 +172,9 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       const tenantId = request.tenant!.id;
       const body = request.body;
 
+      const headerIdem = (request.headers['idempotency-key'] as string | undefined) || undefined;
+      const idempotencyKey = headerIdem || (body as any)?.idempotencyKey;
+
       // Validate that either mediaUrl or mediaBuffer is provided
       if (!body.mediaUrl && !body.mediaBuffer) {
         throw BAD_REQUEST('Either mediaUrl or mediaBuffer must be provided');
@@ -170,8 +184,14 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       try {
-        const result = await messageService.sendMedia(tenantId, deviceId, body);
-        return _reply.send(result);
+        const result = await messageService.sendMedia(tenantId, deviceId, body, idempotencyKey);
+        return _reply.send({
+          id: result.messageId,
+          messageId: result.messageId,
+          status: result.status,
+          timestamp: Date.now(),
+          idempotencyKey,
+        });
       } catch (error: any) {
         request.log.error(error, 'Failed to send media message');
         throw INTERNAL_SERVER_ERROR(error.message || 'Failed to send media');

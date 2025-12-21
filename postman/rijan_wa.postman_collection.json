@@ -593,13 +593,10 @@
                       "",
                       "if (pm.response.code === 200 || pm.response.code === 201) {",
                       "  const jsonData = pm.response.json();",
-                      "  if (jsonData.data && jsonData.data.message_id) {",
-                      "    pm.variables.set('MESSAGE_ID', jsonData.data.message_id);",
-                      "    console.log('✓ MESSAGE_ID saved:', jsonData.data.message_id);",
-                      "  }",
-                      "  if (jsonData.data && jsonData.data.wa_message_id) {",
-                      "    pm.variables.set('WA_MESSAGE_ID', jsonData.data.wa_message_id);",
-                      "    console.log('✓ WA_MESSAGE_ID saved:', jsonData.data.wa_message_id);",
+                      "  const messageId = jsonData.messageId || jsonData.id;",
+                      "  if (messageId) {",
+                      "    pm.variables.set('MESSAGE_ID', messageId);",
+                      "    console.log('✓ MESSAGE_ID saved:', messageId);",
                       "  }",
                       "} else if (pm.response.code === 409) {",
                       "  console.log('⚠ Device not connected - need to pair first');",
@@ -662,9 +659,10 @@
                       "",
                       "if (pm.response.code === 200 || pm.response.code === 201) {",
                       "  const jsonData = pm.response.json();",
-                      "  if (jsonData.data && jsonData.data.message_id) {",
-                      "    pm.variables.set('MESSAGE_ID', jsonData.data.message_id);",
-                      "    console.log('✓ MESSAGE_ID saved:', jsonData.data.message_id);",
+                      "  const messageId = jsonData.messageId || jsonData.id;",
+                      "  if (messageId) {",
+                      "    pm.variables.set('MESSAGE_ID', messageId);",
+                      "    console.log('✓ MESSAGE_ID saved:', messageId);",
                       "  }",
                       "}"
                     ]
@@ -841,6 +839,26 @@
             },
             {
               "name": "Get Message Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200 or 404\", () => {",
+                      "  pm.expect([200, 404]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.waMessageId) {",
+                      "    pm.variables.set('WA_MESSAGE_ID', jsonData.waMessageId);",
+                      "    console.log('✓ WA_MESSAGE_ID saved:', jsonData.waMessageId);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
               "request": {
                 "method": "GET",
                 "header": [
