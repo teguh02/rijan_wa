@@ -110,14 +110,56 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
       try {
         const db = getDatabase();
 
-        // Fetch various metrics
-        const deviceCount = (db.prepare('SELECT COUNT(*) as count FROM devices WHERE status = "connected"').get() as any)?.count || 0;
-        const totalDevices = (db.prepare('SELECT COUNT(*) as count FROM devices').get() as any)?.count || 0;
-        const messagesSent = (db.prepare('SELECT COUNT(*) as count FROM messages_outbox WHERE status = "sent"').get() as any)?.count || 0;
-        const messagesReceived = (db.prepare('SELECT COUNT(*) as count FROM messages_inbox').get() as any)?.count || 0;
-        const webhooksRegistered = (db.prepare('SELECT COUNT(*) as count FROM webhooks WHERE enabled = 1').get() as any)?.count || 0;
-        const webhooksFailed = (db.prepare('SELECT COUNT(*) as count FROM dlq').get() as any)?.count || 0;
-        const tenantsActive = (db.prepare('SELECT COUNT(*) as count FROM tenants WHERE status = "active"').get() as any)?.count || 0;
+        // Fetch various metrics with safe defaults
+        let deviceCount = 0;
+        let totalDevices = 0;
+        let messagesSent = 0;
+        let messagesReceived = 0;
+        let webhooksRegistered = 0;
+        let webhooksFailed = 0;
+        let tenantsActive = 0;
+
+        try {
+          deviceCount = (db.prepare('SELECT COUNT(*) as count FROM devices WHERE status = ?').get('connected') as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count connected devices');
+        }
+
+        try {
+          totalDevices = (db.prepare('SELECT COUNT(*) as count FROM devices').get() as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count total devices');
+        }
+
+        try {
+          messagesSent = (db.prepare('SELECT COUNT(*) as count FROM messages_outbox WHERE status = ?').get('sent') as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count sent messages');
+        }
+
+        try {
+          messagesReceived = (db.prepare('SELECT COUNT(*) as count FROM messages_inbox').get() as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count received messages');
+        }
+
+        try {
+          webhooksRegistered = (db.prepare('SELECT COUNT(*) as count FROM webhooks WHERE enabled = ?').get(1) as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count registered webhooks');
+        }
+
+        try {
+          webhooksFailed = (db.prepare('SELECT COUNT(*) as count FROM dlq').get() as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count failed webhooks');
+        }
+
+        try {
+          tenantsActive = (db.prepare('SELECT COUNT(*) as count FROM tenants WHERE status = ?').get('active') as any)?.count || 0;
+        } catch (e) {
+          logger.warn({ error: e }, 'Failed to count active tenants');
+        }
 
         // Build Prometheus format response
         const metrics = `# HELP rijan_devices_connected Connected WhatsApp devices
