@@ -68,6 +68,16 @@ Untuk memulai dengan cepat:
 5. **Start & Pairing** → [07-tenant-start-device.md](07-tenant-start-device.md)
 6. **Kirim Pesan** → [08-tenant-send-text.md](08-tenant-send-text.md)
 
+### ⚠️ Common Mistake: Master Key Setup
+
+Banyak developer mengalami error `401 API key required` saat setup master key.
+**Lihat detail di**: [Plain Text vs Hash di Master Key Setup](02-master-key.md#-penting-plain-text-vs-hash)
+
+Key point:
+- ✅ `.env`: Simpan **SHA256 hash**
+- ✅ **Header X-Master-Key**: Kirim **plain text** password
+- ✅ **Server**: Hash plain text, compare dengan .env
+
 ## 🌟 Fitur Utama
 
 - ✅ Multi-tenant dengan isolasi penuh

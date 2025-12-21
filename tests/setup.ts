@@ -3,7 +3,8 @@ import path from 'path';
 
 // Setup environment variables untuk test
 process.env.NODE_ENV = 'test';
-process.env.MASTER_KEY = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // dummy SHA256 hash
+// MASTER_KEY = SHA256("admin") untuk testing
+process.env.MASTER_KEY = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
 process.env.DB_PATH = ':memory:'; // In-memory SQLite for tests
 process.env.SERVER_PORT = '3000';
 process.env.SERVER_TIMEZONE = 'Asia/Jakarta';
@@ -88,6 +89,7 @@ export const testUtils = {
   generateDummyTenantId: () => `tenant_${Math.random().toString(36).substr(2, 9)}`,
   generateDummyDeviceId: () => `device_${Math.random().toString(36).substr(2, 9)}`,
   generateDummyPhoneNumber: () => `62${Math.random().toString().slice(2, 12)}`,
-  dummyMasterKey: process.env.MASTER_KEY!,
+  dummyMasterKeyPlain: 'admin', // Plain text master key for testing
+  dummyMasterKeyHash: process.env.MASTER_KEY!, // SHA256 hash in ENV
   dummyApiKey: (tenantId: string) => `rijan_${tenantId}_${Math.random().toString(36).substr(2, 20)}`,
 };

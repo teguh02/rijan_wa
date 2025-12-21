@@ -2,6 +2,72 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2025-12-21
+
+### 🔐 Security & Authentication Fixes
+
+#### 🐛 Bug Fixes
+
+**Master Key Verification Flow (Critical)**
+- ✅ Fixed master key authentication middleware to accept plain text password (not SHA256 hash)
+- ✅ Server now hashes plain text from X-Master-Key header using SHA256
+- ✅ Compare hashed value with MASTER_KEY environment variable (constant-time comparison)
+- ✅ Prevents timing attacks using crypto.timingSafeEqual()
+
+**Admin Routes Authorization (Critical)**
+- ✅ Fixed issue where tenant auth middleware was blocking admin routes
+- ✅ Added `/admin` path to skip list in verifyTenantApiKey middleware
+- ✅ Admin routes now correctly use X-Master-Key header (master key middleware)
+- ✅ Tenant routes continue to use Authorization Bearer token
+
+#### 📝 Documentation Updates
+
+**Master Key Setup Documentation**
+- ✅ Updated docs/02-master-key.md with "Plain Text vs Hash" section
+- ✅ Added clear comparison table: ENV (hash) vs Header (plain text) vs Server Process
+- ✅ Updated verification examples to use plain text instead of hash
+- ✅ Added troubleshooting section for common master key errors
+
+**Admin Authentication Documentation**
+- ✅ Enhanced docs/04-admin-create-tenant.md with authentication flow explanation
+- ✅ Updated cURL and PowerShell examples to send plain text master key
+- ✅ Added section: "Authentication Flow" explaining the 3-step process
+- ✅ Added security warning about plain text vs hash
+
+**Project Documentation**
+- ✅ Updated README.md with "Plain Text vs Hash" security section
+- ✅ Added visual flow diagram showing correct authentication process
+- ✅ Updated docs/README.md with "Common Mistake: Master Key Setup" section
+- ✅ Added links to comprehensive master key setup guide
+
+#### 🧪 Test Updates
+
+**Crypto Tests**
+- ✅ Updated crypto.test.ts master key tests for plain text verification
+- ✅ Updated test utils to include dummyMasterKeyPlain and dummyMasterKeyHash
+- ✅ All tests verify correct plain text → hash behavior
+- ✅ 188 unit tests passing with 98%+ coverage
+
+#### 🔑 Key Points
+
+**Correct Master Key Flow**:
+```
+1. Client sends plain text: X-Master-Key: admin
+2. Server hashes: SHA256('admin')
+3. Compare with ENV: MASTER_KEY=8c6976e5...
+4. Constant-time comparison to prevent timing attacks
+```
+
+**What Changed**:
+- `src/utils/crypto.ts` - verifyMasterKey() now hashes input
+- `src/middlewares/auth.ts` - Updated comments documenting flow
+- `src/middlewares/tenant-auth.ts` - Added /admin to skip paths
+- `.env` - Added comprehensive comments about setup
+- `tests/setup.ts` - Updated test utilities
+- `tests/unit/crypto.test.ts` - Updated to test plain text input
+
+---
+
 ## [1.3.0] - 2025-12-20
 
 ### 🚀 PROMPT 4 - Inbound Events, Webhooks, Group/Privacy API, Production Hardening

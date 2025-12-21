@@ -49,6 +49,36 @@ rijan_wa/
   - Derivasi encryption keys
   - Signing dan verifikasi tenant API keys
 
+#### ⚠️ PENTING: Plain Text vs Hash
+
+**Salah paham umum:** Developer mengirim SHA256 hash di header X-Master-Key.
+
+```
+┌─────────────────────────────────────┐
+│ CORRECT FLOW (Yang HARUS dilakukan) │
+└─────────────────────────────────────┘
+
+File .env (Server):
+  MASTER_KEY=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+
+Header X-Master-Key (Client):
+  X-Master-Key: admin  ← PLAIN TEXT PASSWORD!
+
+Server Process:
+  1. Terima plain text dari header: "admin"
+  2. Hash dengan SHA256: "8c6976e5b5410415...9673fc4bb8a81f6f2ab448a918"
+  3. Compare dengan MASTER_KEY di .env menggunakan constant-time comparison
+  4. Match? → Allow | Tidak match? → Error 401
+```
+
+**❌ JANGAN lakukan ini** (Salah):
+```
+Header X-Master-Key: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+```
+Alasan: Server akan hash ini lagi → hasil berbeda → authentication gagal
+
+**Dokumentasi lengkap**: Lihat [Membuat Master Key](docs/02-master-key.md) dan [Plain Text vs Hash](docs/02-master-key.md#-penting-plain-text-vs-hash)
+
 **Generate Master Key:**
 ```bash
 echo -n "your-super-secret-password" | sha256sum

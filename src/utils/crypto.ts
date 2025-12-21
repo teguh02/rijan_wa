@@ -141,12 +141,22 @@ export function generateId(prefix: string = ''): string {
 }
 
 /**
- * Verify MASTER_KEY dari header
+ * Verify MASTER_KEY dari header (plain text)
+ * 1. Ambil plain text dari header
+ * 2. Hash dengan SHA256
+ * 3. Compare dengan hash di ENV
  */
-export function verifyMasterKey(providedKey: string): boolean {
+export function verifyMasterKey(providedPlainKey: string): boolean {
   try {
+    // Hash plain text dari header
+    const providedHash = crypto
+      .createHash('sha256')
+      .update(providedPlainKey)
+      .digest('hex');
+
+    // Compare dengan hash di env (using constant-time comparison)
     return crypto.timingSafeEqual(
-      Buffer.from(providedKey, 'hex'),
+      Buffer.from(providedHash, 'hex'),
       Buffer.from(config.security.masterKey, 'hex')
     );
   } catch {

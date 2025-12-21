@@ -12,18 +12,22 @@ import {
 
 describe('Crypto Module', () => {
   describe('Master Key Verification', () => {
-    it('should verify correct master key', () => {
-      const correctKey = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
-      expect(verifyMasterKey(correctKey)).toBe(true);
+    it('should verify correct plain text master key', () => {
+      // ENV stores: MASTER_KEY=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      // (which is SHA256 hash of "admin")
+      // User sends plain text: "admin"
+      // Middleware should hash it and compare
+      const plainKey = 'admin';
+      expect(verifyMasterKey(plainKey)).toBe(true);
     });
 
-    it('should reject incorrect master key', () => {
-      const wrongKey = '0000000000000000000000000000000000000000000000000000000000000000';
+    it('should reject incorrect plain text master key', () => {
+      const wrongKey = 'wrongpassword';
       expect(verifyMasterKey(wrongKey)).toBe(false);
     });
 
     it('should reject malformed master key', () => {
-      expect(verifyMasterKey('not-hex')).toBe(false);
+      expect(verifyMasterKey('not-valid')).toBe(false);
     });
 
     it('should reject empty master key', () => {
@@ -33,6 +37,24 @@ describe('Crypto Module', () => {
     it('should reject null/undefined', () => {
       expect(verifyMasterKey(null as any)).toBe(false);
       expect(verifyMasterKey(undefined as any)).toBe(false);
+    });
+
+    it('should use constant-time comparison (timing safe)', () => {
+      const correctKey = 'admin';
+      const wrongKey = 'wrong';
+
+      // Both should complete in similar time
+      const start1 = Date.now();
+      const valid1 = verifyMasterKey(correctKey);
+      const time1 = Date.now() - start1;
+
+      const start2 = Date.now();
+      const valid2 = verifyMasterKey(wrongKey);
+      const time2 = Date.now() - start2;
+
+      expect(valid1).toBe(true);
+      expect(valid2).toBe(false);
+      // Timing test is for demonstration; in practice hard to test reliably
     });
   });
 

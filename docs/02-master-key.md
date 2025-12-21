@@ -101,16 +101,69 @@ Setelah update master key, restart server:
 npm run dev
 ```
 
+## ⚠️ PENTING: Plain Text vs Hash
+
+**SALAH PAHAM UMUM**: Banyak developer mengirim SHA256 hash di header X-Master-Key.
+
+### Aturan Emas
+
+| Lokasi | Format | Contoh |
+|--------|--------|--------|
+| **File `.env`** (Server) | SHA256 hash | `8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918` |
+| **Header X-Master-Key** (Client) | Plain text | `admin` |
+| **Server Process** | Hash client input → Compare with ENV | `SHA256(admin)` → Compare dengan MASTER_KEY |
+
+### Flow yang BENAR
+
+```
+1. Client mengirim plain text:
+   X-Master-Key: admin
+
+2. Server menerima dan hash:
+   const hash = SHA256('admin')
+   → 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+
+3. Server compare dengan ENV:
+   MASTER_KEY=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+   
+4. Jika match → Allow, jika tidak → Reject
+```
+
+**JANGAN melakukan ini** ❌:
+```bash
+# SALAH: Mengirim hash dari client
+curl -X GET http://localhost:3000/admin/tenants \
+  -H "X-Master-Key: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+  # ❌ Server akan hash ini lagi, hasilnya tidak cocok!
+```
+
 ## ✅ Verifikasi Master Key
 
-Test apakah master key bekerja dengan memanggil admin endpoint:
+Test apakah master key bekerja dengan memanggil admin endpoint.
+
+**Asumsikan master password Anda adalah: `admin`**
+
+### cURL Request (Plain Text)
 
 ```bash
 curl -X GET http://localhost:3000/admin/tenants \
-  -H "X-Master-Key: 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+  -H "X-Master-Key: admin"
 ```
 
-**Response jika BERHASIL**:
+### PowerShell Request (Plain Text)
+
+```powershell
+$headers = @{
+    "X-Master-Key" = "admin"
+}
+
+Invoke-RestMethod -Uri "http://localhost:3000/admin/tenants" `
+    -Method Get `
+    -Headers $headers
+```
+
+### Response jika BERHASIL
+
 ```json
 {
   "success": true,
@@ -121,7 +174,8 @@ curl -X GET http://localhost:3000/admin/tenants \
 }
 ```
 
-**Response jika GAGAL** (master key salah):
+### Response jika GAGAL (master key salah)
+
 ```json
 {
   "success": false,

@@ -27,8 +27,8 @@ export async function verifyTenantApiKey(
   request: FastifyRequest,
   _reply: FastifyReply
 ): Promise<void> {
-  // Skip public endpoints yang tidak memerlukan auth
-  const publicPaths = ['/health', '/ready', '/metrics', '/docs'];
+  // Skip public endpoints dan admin endpoints (mereka punya own middleware untuk master key)
+  const publicPaths = ['/health', '/ready', '/metrics', '/docs', '/admin'];
   if (publicPaths.some(path => request.url.startsWith(path))) {
     return;
   }

@@ -5,8 +5,11 @@ Panduan untuk admin membuat tenant baru. Tenant adalah unit isolasi yang dapat m
 ## 🔑 Prerequisites
 
 - Server sudah running
-- Master Key sudah disiapkan
+- Master Key sudah disiapkan dan dikonfigurasi di `.env`
+- Anda tahu master password (plain text) untuk master key
 - Terminal atau REST client (cURL, Postman, Insomnia)
+
+**📖 Setup Master Key**: Lihat [Membuat Master Key](02-master-key.md) untuk instruksi lengkap.
 
 ## 📝 Endpoint
 
@@ -14,7 +17,26 @@ Panduan untuk admin membuat tenant baru. Tenant adalah unit isolasi yang dapat m
 POST /admin/tenants
 ```
 
-**Authentication**: Master Key (X-Master-Key header)
+**Authentication**: Master Key via X-Master-Key header (plain text)
+
+### Authentication Flow
+
+```
+Request Header:
+  X-Master-Key: <plain_text_password>
+
+Server Process:
+  1. Terima plain text dari header
+  2. Hash dengan SHA256
+  3. Compare dengan MASTER_KEY (hash) di .env
+  4. Jika match → Allow, jika tidak → Error 401
+
+.env:
+  MASTER_KEY=<sha256_hash>
+```
+
+⚠️ **PENTING**: Kirim plain text password di header, bukan hash!
+Lihat bagian "Plain Text vs Hash" di [Membuat Master Key](02-master-key.md)
 
 ## 🚀 Membuat Tenant Pertama
 
@@ -23,7 +45,17 @@ POST /admin/tenants
 ```bash
 curl -X POST http://localhost:3000/admin/tenants \
   -H "Content-Type: application/json" \
-  -H "X-Master-Key: YOUR_MASTER_KEY_HERE" \
+  -H "X-Master-Key: YOUR_PLAIN_TEXT_PASSWORD" \
+  -d '{
+    "name": "PT Contoh Perusahaan"
+  }'
+```
+
+**Contoh dengan master password "admin"**:
+```bash
+curl -X POST http://localhost:3000/admin/tenants \
+  -H "Content-Type: application/json" \
+  -H "X-Master-Key: admin" \
   -d '{
     "name": "PT Contoh Perusahaan"
   }'
@@ -34,7 +66,24 @@ curl -X POST http://localhost:3000/admin/tenants \
 ```powershell
 $headers = @{
     "Content-Type" = "application/json"
-    "X-Master-Key" = "YOUR_MASTER_KEY_HERE"
+    "X-Master-Key" = "YOUR_PLAIN_TEXT_PASSWORD"
+}
+
+$body = @{
+    name = "PT Contoh Perusahaan"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:3000/admin/tenants" `
+    -Method Post `
+    -Headers $headers `
+    -Body $body
+```
+
+**Contoh dengan master password "admin"**:
+```powershell
+$headers = @{
+    "Content-Type" = "application/json"
+    "X-Master-Key" = "admin"
 }
 
 $body = @{

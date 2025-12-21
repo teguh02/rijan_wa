@@ -8,7 +8,15 @@ const auditRepo = new AuditLogRepository();
 
 /**
  * Middleware untuk verifikasi MASTER_KEY pada admin endpoints
- * Header: X-Master-Key: <sha256_hash>
+ * 
+ * Flow:
+ * 1. User mengirim plain text master key via header X-Master-Key
+ * 2. Middleware hash dengan SHA256
+ * 3. Compare hash dengan hash di ENV (MASTER_KEY)
+ * 4. Jika cocok -> allow, jika tidak -> error
+ * 
+ * ENV: MASTER_KEY=<sha256_hash>
+ * Header: X-Master-Key: <plain_text>
  */
 export async function verifyMasterKey(
   request: FastifyRequest,
