@@ -14,6 +14,7 @@ import { deviceManager } from '../../baileys/device-manager';
 import logger from '../../utils/logger';
 import crypto from 'crypto';
 import axios from 'axios';
+import { URL } from 'url';
 
 export class MessageService {
   private messageRepo = new MessageRepository();
@@ -152,10 +153,15 @@ export class MessageService {
 
       // Download media if URL provided
       if (payload.mediaUrl) {
+        // Validate URL to prevent SSRF
+        this.validateMediaUrl(payload.mediaUrl);
+        
         const response = await axios.get(payload.mediaUrl, {
           responseType: 'arraybuffer',
           timeout: 30000,
           maxContentLength: 50 * 1024 * 1024, // 50MB max
+          maxRedirects: 5,
+          validateStatus: (status) => status >= 200 && status < 400,
         });
         mediaBuffer = Buffer.from(response.data);
       } else if (payload.mediaBuffer) {
@@ -421,8 +427,58 @@ export class MessageService {
     return jid;
   }
 
-  /**
-   * Handle send error
+  /**   * Validate media URL to prevent SSRF attacks
+   */
+  private validateMediaUrl(urlString: string): void {
+    try {
+      const url = new URL(urlString);
+      
+      // Only allow http/https
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
+      }
+      
+      // Block private IP ranges and localhost
+      const hostname = url.hostname.toLowerCase();
+      
+      // Block localhost variants
+      if (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '::1' ||
+        hostname === '0.0.0.0'
+      ) {
+        throw new Error('Localhost URLs are not allowed');
+      }
+      
+      // Block private IPv4 ranges
+      if (
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+        hostname.startsWith('169.254.') // Link-local
+      ) {
+        throw new Error('Private IP ranges are not allowed');
+      }
+      
+      // Block IPv6 private ranges (simplified check)
+      if (
+        hostname.startsWith('fc00:') ||
+        hostname.startsWith('fd00:') ||
+        hostname.startsWith('fe80:')
+      ) {
+        throw new Error('Private IPv6 ranges are not allowed');
+      }
+      
+    } catch (error: any) {
+      if (error.message && error.message.includes('not allowed')) {
+        throw error;
+      }
+      throw new Error('Invalid media URL format');
+    }
+  }
+
+  /**   * Handle send error
    */
   private handleSendError(messageId: string, error: any): void {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

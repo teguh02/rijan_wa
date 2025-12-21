@@ -72,11 +72,12 @@ export function decrypt(data: EncryptedData, salt: string): string {
  * Generate tenant API key menggunakan HMAC-SHA256
  * Format: tenantId.timestamp.signature
  */
-export function generateTenantApiKey(tenantId: string): string {
+export function generateTenantApiKey(tenantId: string, expiresInDays: number = 365): string {
   const timestamp = Date.now();
+  const expiresAt = timestamp + (expiresInDays * 24 * 60 * 60 * 1000);
   const salt = crypto.randomBytes(16).toString('hex');
   
-  const payload = `${tenantId}.${timestamp}.${salt}`;
+  const payload = `${tenantId}.${timestamp}.${expiresAt}.${salt}`;
   const signature = crypto
     .createHmac('sha256', Buffer.from(config.security.masterKey, 'hex'))
     .update(payload)
@@ -88,16 +89,22 @@ export function generateTenantApiKey(tenantId: string): string {
 /**
  * Verify dan parse tenant API key
  */
-export function verifyTenantApiKey(apiKey: string): { valid: boolean; tenantId?: string } {
+export function verifyTenantApiKey(apiKey: string): { valid: boolean; tenantId?: string; expired?: boolean } {
   try {
     const parts = apiKey.split('.');
-    if (parts.length !== 4) {
+    if (parts.length !== 5) {
       return { valid: false };
     }
     
-    const [tenantId, timestamp, salt, signature] = parts;
+    const [tenantId, timestamp, expiresAt, salt, signature] = parts;
     
-    const payload = `${tenantId}.${timestamp}.${salt}`;
+    // Check expiration
+    const expiresAtMs = parseInt(expiresAt, 10);
+    if (isNaN(expiresAtMs) || expiresAtMs < Date.now()) {
+      return { valid: false, expired: true };
+    }
+    
+    const payload = `${tenantId}.${timestamp}.${expiresAt}.${salt}`;
     const expectedSignature = crypto
       .createHmac('sha256', Buffer.from(config.security.masterKey, 'hex'))
       .update(payload)

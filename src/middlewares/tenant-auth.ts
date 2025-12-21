@@ -48,9 +48,13 @@ export async function verifyTenantApiKey(
   // Verify API key signature
   const verification = verifyApiKey(apiKey);
   if (!verification.valid || !verification.tenantId) {
+    const errorMessage = verification.expired 
+      ? 'API key has expired. Please generate a new API key.'
+      : 'Invalid API key';
+    
     throw new AppError(
       ErrorCode.INVALID_API_KEY,
-      'Invalid API key',
+      errorMessage,
       401
     );
   }

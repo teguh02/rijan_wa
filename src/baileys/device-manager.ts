@@ -11,6 +11,8 @@ import { BaileysAuthStore, useDatabaseAuthState } from './auth-store';
 import { DeviceStatus, DeviceState, PairingMethod, DeviceConnectionInfo } from './types';
 import { DeviceRepository } from '../storage/repositories';
 import logger from '../utils/logger';
+import { DistributedLock } from '../utils/distributed-lock';
+import config from '../config';
 // import crypto from 'crypto';
 
 /**
@@ -20,9 +22,12 @@ export class DeviceManager {
   private devices = new Map<string, DeviceInstance>();
   private authStore = new BaileysAuthStore();
   private deviceRepo = new DeviceRepository();
+  private distributedLock: DistributedLock;
   private static instance: DeviceManager;
 
-  private constructor() {}
+  private constructor() {
+    this.distributedLock = new DistributedLock(config.instanceId);
+  }
 
   static getInstance(): DeviceManager {
     if (!DeviceManager.instance) {
@@ -35,23 +40,34 @@ export class DeviceManager {
    * Start device dan create socket
    */
   async startDevice(deviceId: string, tenantId: string): Promise<DeviceState> {
-    // Check if already running
-    const existing = this.devices.get(deviceId);
-    if (existing?.socket && !existing.socket.ws.isClosed) {
-      logger.warn({ deviceId }, 'Device already running');
-      return existing.state;
+    // Acquire distributed lock first (5 second timeout)
+    const lockAcquired = await this.distributedLock.acquireLock(deviceId, 5000);
+    if (!lockAcquired) {
+      throw new Error('Device is already starting on another instance. Please wait and try again.');
     }
 
-    // Verify device exists dan belongs to tenant
-    const device = this.deviceRepo.findById(deviceId, tenantId);
-    if (!device) {
-      throw new Error('Device not found or access denied');
-    }
+    try {
+      // Check if already running
+      const existing = this.devices.get(deviceId);
+      if (existing?.socket && !existing.socket.ws.isClosed) {
+        logger.warn({ deviceId }, 'Device already running');
+        // Release lock before returning
+        await this.distributedLock.releaseLock(deviceId);
+        return existing.state;
+      }
 
-    // Lock starting
-    if (existing?.state.isStarting) {
-      throw new Error('Device is already starting');
-    }
+      // Verify device exists dan belongs to tenant
+      const device = this.deviceRepo.findById(deviceId, tenantId);
+      if (!device) {
+        await this.distributedLock.releaseLock(deviceId);
+        throw new Error('Device not found or access denied');
+      }
+
+      // Lock starting
+      if (existing?.state.isStarting) {
+        await this.distributedLock.releaseLock(deviceId);
+        throw new Error('Device is already starting');
+      }
 
     // Initialize state
     const state: DeviceState = {
@@ -98,6 +114,17 @@ export class DeviceManager {
       instance.socket = socket;
       state.isStarting = false;
 
+      // Setup lock refresh interval (every 60 seconds)
+      const lockRefreshInterval = setInterval(async () => {
+        try {
+          await this.distributedLock.refreshLock(deviceId);
+        } catch (error) {
+          logger.error({ error, deviceId }, 'Failed to refresh lock');
+        }
+      }, 60000); // 1 minute
+
+      instance.lockRefreshInterval = lockRefreshInterval;
+
       // Setup event handlers
       this.setupEventHandlers(deviceId, socket, saveCreds);
 
@@ -111,7 +138,16 @@ export class DeviceManager {
       state.isStarting = false;
       state.status = DeviceStatus.FAILED;
       state.lastError = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Release lock on error
+      await this.distributedLock.releaseLock(deviceId);
+      
       logger.error({ error, deviceId }, 'Failed to start device');
+      throw error;
+    }
+    } catch (error) {
+      // Release lock if outer try-catch catches
+      await this.distributedLock.releaseLock(deviceId);
       throw error;
     }
   }
@@ -129,6 +165,14 @@ export class DeviceManager {
       if (instance.socket && !instance.socket.ws.isClosed) {
         instance.socket.ws.close();
       }
+
+      // Clear lock refresh interval
+      if (instance.lockRefreshInterval) {
+        clearInterval(instance.lockRefreshInterval);
+      }
+
+      // Release distributed lock
+      await this.distributedLock.releaseLock(deviceId);
 
       instance.state.status = DeviceStatus.DISCONNECTED;
       this.deviceRepo.updateStatus(deviceId, 'disconnected');
@@ -587,6 +631,7 @@ interface DeviceInstance {
   state: DeviceState;
   socket: WASocket;
   startedAt: number;
+  lockRefreshInterval?: NodeJS.Timeout;
 }
 
 // Export singleton instance
