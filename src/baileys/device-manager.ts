@@ -3,7 +3,6 @@ import makeWASocket, {
   WASocket,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  makeInMemoryStore,
   Browsers,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
@@ -130,6 +129,7 @@ export class DeviceManager {
       state,
       socket: null as any,
       startedAt: Date.now(),
+      chatIndex: new Map(),
     };
 
     this.devices.set(deviceId, instance);
@@ -160,11 +160,6 @@ export class DeviceManager {
         // Note: can be RAM heavy for large accounts.
         syncFullHistory: true,
       });
-
-      // Baileys store (required to list chats/contacts reliably)
-      const store = makeInMemoryStore({});
-      store.bind(socket.ev);
-      (socket as any).store = store;
 
       instance.socket = socket;
       state.isStarting = false;
@@ -384,6 +379,15 @@ export class DeviceManager {
   }
 
   /**
+   * Snapshot of known chats for a device, populated from Baileys events.
+   */
+  getChatsSnapshot(deviceId: string): any[] {
+    const instance = this.devices.get(deviceId);
+    if (!instance) return [];
+    return Array.from(instance.chatIndex.values());
+  }
+
+  /**
    * Setup event handlers untuk Baileys socket
    */
   private setupEventHandlers(
@@ -394,6 +398,28 @@ export class DeviceManager {
   ): void {
     const instance = this.devices.get(deviceId);
     if (!instance) return;
+
+    // Chat history + chat list hydration
+    socket.ev.on('messaging-history.set', async ({ chats }) => {
+      try {
+        for (const chat of chats || []) {
+          if (chat?.id) instance.chatIndex.set(chat.id, chat);
+        }
+        logger.info({ deviceId, count: chats?.length || 0 }, 'Chat history set received');
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process messaging-history.set');
+      }
+    });
+
+    socket.ev.on('chats.upsert', async (chats) => {
+      try {
+        for (const chat of chats || []) {
+          if (chat?.id) instance.chatIndex.set(chat.id, chat);
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process chats.upsert');
+      }
+    });
 
     // Connection updates
     socket.ev.on('connection.update', async (update) => {
@@ -632,6 +658,12 @@ export class DeviceManager {
 
         for (const update of updates) {
           eventRepository.saveEvent(instance.state.tenantId, deviceId, 'chats.update', update);
+
+          const jid = (update as any)?.id;
+          if (jid) {
+            const existing = instance.chatIndex.get(jid) || { id: jid };
+            instance.chatIndex.set(jid, { ...existing, ...update });
+          }
         }
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.update');
@@ -811,6 +843,7 @@ interface DeviceInstance {
   socket: WASocket;
   startedAt: number;
   lockRefreshInterval?: NodeJS.Timeout;
+  chatIndex: Map<string, any>;
 }
 
 // Export singleton instance

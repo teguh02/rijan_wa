@@ -12,36 +12,34 @@ export class ChatService {
    * Get chats for device
    */
   async getChats(deviceId: string, limit = 50, offset = 0): Promise<Chat[]> {
-    const socket = this.getSocket(deviceId);
-
     try {
-      // Get from Baileys store
-      const chats: Chat[] = [];
-      const store = (socket as any).store;
-
-      // Baileys store.chats is a KeyedDB. Use .all() to get list.
-      const allChats: any[] = store?.chats?.all ? store.chats.all() : [];
-      for (const chat of allChats) {
-        const jid = chat?.id || chat?.jid;
-        if (!jid) continue;
-
-        chats.push({
-          jid,
-          name: chat?.name || jid,
-          isGroup: typeof jid === 'string' ? jid.endsWith('@g.us') : false,
-          unreadCount: chat?.unreadCount || 0,
-          lastMessageTime: chat?.conversationTimestamp,
-          archived: chat?.archived || false,
-          muted: Boolean(chat?.muteEndTime),
-        });
+      // Try cache first
+      const cached = this.chatCache.get(deviceId);
+      if (cached && cached.length > 0) {
+        return cached.slice(offset, offset + limit);
       }
 
-      // Most recent first if timestamp exists
-      chats.sort((a, b) => (Number(b.lastMessageTime || 0) - Number(a.lastMessageTime || 0)));
+      // DeviceManager maintains an in-memory chat index populated from Baileys events.
+      const rawChats = deviceManager.getChatsSnapshot(deviceId);
+      const chats: Chat[] = rawChats
+        .map((chat: any) => {
+          const jid = chat?.id || chat?.jid;
+          if (!jid) return null;
 
-      // Cache chats
+          return {
+            jid,
+            name: chat?.name || jid,
+            isGroup: typeof jid === 'string' ? jid.endsWith('@g.us') : false,
+            unreadCount: chat?.unreadCount || 0,
+            lastMessageTime: chat?.conversationTimestamp,
+            archived: chat?.archived || false,
+            muted: Boolean(chat?.muteEndTime),
+          } as Chat;
+        })
+        .filter(Boolean) as Chat[];
+
+      chats.sort((a, b) => Number(b.lastMessageTime || 0) - Number(a.lastMessageTime || 0));
       this.chatCache.set(deviceId, chats);
-
       return chats.slice(offset, offset + limit);
     } catch (error) {
       logger.error({ error, deviceId }, 'Failed to get chats');
