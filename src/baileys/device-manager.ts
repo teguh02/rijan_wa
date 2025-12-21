@@ -3,6 +3,7 @@ import makeWASocket, {
   WASocket,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
+  makeInMemoryStore,
   Browsers,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
@@ -155,7 +156,15 @@ export class DeviceManager {
         },
         logger,
         markOnlineOnConnect: false,
+        // Helps populate chat list/history on first connection.
+        // Note: can be RAM heavy for large accounts.
+        syncFullHistory: true,
       });
+
+      // Baileys store (required to list chats/contacts reliably)
+      const store = makeInMemoryStore({});
+      store.bind(socket.ev);
+      (socket as any).store = store;
 
       instance.socket = socket;
       state.isStarting = false;

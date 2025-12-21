@@ -15,29 +15,29 @@ export class ChatService {
     const socket = this.getSocket(deviceId);
 
     try {
-      // Try to get from cache first
-      const cached = this.chatCache.get(deviceId);
-      if (cached && cached.length > 0) {
-        return cached.slice(offset, offset + limit);
-      }
-
       // Get from Baileys store
       const chats: Chat[] = [];
       const store = (socket as any).store;
 
-      if (store?.chats) {
-        for (const [jid, chat] of Object.entries(store.chats)) {
-          chats.push({
-            jid,
-            name: (chat as any).name || jid,
-            isGroup: jid.endsWith('@g.us'),
-            unreadCount: (chat as any).unreadCount || 0,
-            lastMessageTime: (chat as any).conversationTimestamp,
-            archived: (chat as any).archived || false,
-            muted: (chat as any).muted || false,
-          });
-        }
+      // Baileys store.chats is a KeyedDB. Use .all() to get list.
+      const allChats: any[] = store?.chats?.all ? store.chats.all() : [];
+      for (const chat of allChats) {
+        const jid = chat?.id || chat?.jid;
+        if (!jid) continue;
+
+        chats.push({
+          jid,
+          name: chat?.name || jid,
+          isGroup: typeof jid === 'string' ? jid.endsWith('@g.us') : false,
+          unreadCount: chat?.unreadCount || 0,
+          lastMessageTime: chat?.conversationTimestamp,
+          archived: chat?.archived || false,
+          muted: Boolean(chat?.muteEndTime),
+        });
       }
+
+      // Most recent first if timestamp exists
+      chats.sort((a, b) => (Number(b.lastMessageTime || 0) - Number(a.lastMessageTime || 0)));
 
       // Cache chats
       this.chatCache.set(deviceId, chats);
