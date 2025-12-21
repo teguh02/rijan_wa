@@ -35,11 +35,11 @@ export interface SendTextMessageRequest {
 
 export interface SendMediaMessageRequest {
   to: string;
-    mediaType: 'image' | 'video' | 'audio' | 'document';
+  mediaType?: 'image' | 'video' | 'audio' | 'document';
   mediaUrl?: string;
   mediaBuffer?: Buffer;
   caption?: string;
-  mimeType: string;
+  mimeType?: string;
   fileName?: string;
   ptt?: boolean; // Push to talk (voice note)
 }

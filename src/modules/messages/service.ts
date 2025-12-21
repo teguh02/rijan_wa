@@ -19,6 +19,100 @@ import { URL } from 'url';
 export class MessageService {
   private messageRepo = new MessageRepository();
 
+  private mapMimeTypeToMediaType(mimeType: string): 'image' | 'video' | 'audio' | 'document' {
+    const normalized = mimeType.toLowerCase().split(';')[0].trim();
+    if (normalized.startsWith('image/')) return 'image';
+    if (normalized.startsWith('video/')) return 'video';
+    if (normalized.startsWith('audio/')) return 'audio';
+    return 'document';
+  }
+
+  private guessMimeTypeFromUrl(mediaUrl: string): string | undefined {
+    try {
+      const url = new URL(mediaUrl);
+      const pathname = url.pathname.toLowerCase();
+
+      if (pathname.endsWith('.jpg') || pathname.endsWith('.jpeg')) return 'image/jpeg';
+      if (pathname.endsWith('.png')) return 'image/png';
+      if (pathname.endsWith('.gif')) return 'image/gif';
+      if (pathname.endsWith('.webp')) return 'image/webp';
+
+      if (pathname.endsWith('.mp4')) return 'video/mp4';
+      if (pathname.endsWith('.webm')) return 'video/webm';
+      if (pathname.endsWith('.mov')) return 'video/quicktime';
+
+      if (pathname.endsWith('.mp3')) return 'audio/mpeg';
+      if (pathname.endsWith('.wav')) return 'audio/wav';
+      if (pathname.endsWith('.ogg')) return 'audio/ogg';
+      if (pathname.endsWith('.m4a')) return 'audio/mp4';
+
+      if (pathname.endsWith('.pdf')) return 'application/pdf';
+      if (pathname.endsWith('.txt')) return 'text/plain';
+
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async inferMediaFromUrl(mediaUrl: string): Promise<{ mediaType: 'image' | 'video' | 'audio' | 'document'; mimeType: string }> {
+    // Validate URL early to prevent SSRF for the HEAD request as well.
+    this.validateMediaUrl(mediaUrl);
+
+    // Prefer Content-Type from server.
+    try {
+      const response = await axios.head(mediaUrl, {
+        timeout: 8000,
+        maxRedirects: 5,
+        validateStatus: (status) => status >= 200 && status < 400,
+      });
+
+      const header = response.headers?.['content-type'];
+      if (typeof header === 'string' && header.trim().length > 0) {
+        const mimeType = header.split(';')[0].trim().toLowerCase();
+        return { mediaType: this.mapMimeTypeToMediaType(mimeType), mimeType };
+      }
+    } catch {
+      // Some hosts don't support HEAD; fall back to URL extension.
+    }
+
+    const guessedMimeType = this.guessMimeTypeFromUrl(mediaUrl) || 'application/octet-stream';
+    return { mediaType: this.mapMimeTypeToMediaType(guessedMimeType), mimeType: guessedMimeType };
+  }
+
+  private async normalizeSendMediaRequest(request: SendMediaMessageRequest): Promise<SendMediaMessageRequest> {
+    let mediaType = request.mediaType;
+    let mimeType = request.mimeType;
+
+    if (request.mediaUrl && (!mediaType || !mimeType)) {
+      const inferred = await this.inferMediaFromUrl(request.mediaUrl);
+      mediaType = mediaType || inferred.mediaType;
+      mimeType = mimeType || inferred.mimeType;
+    }
+
+    if (mimeType && !mediaType) {
+      mediaType = this.mapMimeTypeToMediaType(mimeType);
+    }
+
+    // If mediaBuffer is used, we can't safely infer without mimeType.
+    if (request.mediaBuffer && !mimeType) {
+      throw new Error('mimeType is required when mediaBuffer is provided');
+    }
+
+    if (!mediaType) {
+      throw new Error('mediaType is required (or provide mediaUrl so it can be inferred)');
+    }
+    if (!mimeType) {
+      throw new Error('mimeType is required (or provide mediaUrl so it can be inferred)');
+    }
+
+    return {
+      ...request,
+      mediaType,
+      mimeType,
+    };
+  }
+
   /**
    * Send text message
    */
@@ -96,8 +190,8 @@ export class MessageService {
    * Send media message
    */
   async sendMedia(
-      deviceId: string,
     tenantId: string,
+    deviceId: string,
     request: SendMediaMessageRequest,
     idempotencyKey?: string
   ): Promise<{ messageId: string; status: MessageStatus }> {
@@ -115,22 +209,23 @@ export class MessageService {
       throw new Error('Device is not connected');
     }
 
-    const jid = this.normalizeJid(request.to);
+    const normalizedRequest = await this.normalizeSendMediaRequest(request);
+    const jid = this.normalizeJid(normalizedRequest.to);
 
     // Add to outbox
     const message = this.messageRepo.addToOutbox({
       tenant_id: tenantId,
       device_id: deviceId,
       jid,
-      message_type: request.mediaType.toUpperCase() as MessageType,
-      payload: JSON.stringify(request),
+      message_type: normalizedRequest.mediaType!.toUpperCase() as MessageType,
+      payload: JSON.stringify(normalizedRequest),
       status: MessageStatus.QUEUED,
       retries: 0,
       idempotency_key: idempotencyKey,
     });
 
     // Process send
-    this.processSendMedia(deviceId, message, request.mediaType.toUpperCase() as MessageType).catch((error) => {
+    this.processSendMedia(deviceId, message, normalizedRequest.mediaType!.toUpperCase() as MessageType).catch((error) => {
       logger.error({ error, messageId: message.id }, 'Failed to send media message');
     });
 

@@ -139,7 +139,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
             quotedMessageId: { type: 'string' },
             idempotencyKey: { type: 'string' },
           },
-          required: ['to', 'mediaType', 'mimeType'],
+          required: ['to'],
         },
         response: {
           200: {
