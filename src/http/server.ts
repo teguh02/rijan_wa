@@ -12,7 +12,7 @@ import { runMigrations } from '../storage/migrate';
 import { closeDatabase } from '../storage/database';
 // media routes imported dynamically to avoid TS resolution issues
 
-export async function createServer(): Promise<FastifyInstance> {
+export async function createServer(): Promise<FastifyInstance<any, any, any, any>> {
   const server = Fastify({
     loggerInstance: logger,
     requestIdLogLabel: 'requestId',

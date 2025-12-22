@@ -72,6 +72,24 @@ export class MessageRepository {
   }
 
   /**
+   * Get inbox message row by WA message id (message_id)
+   */
+  getInboxByWaMessageId(
+    deviceId: string,
+    waMessageId: string
+  ): { id: string; tenant_id: string; device_id: string; jid: string; message_id: string; payload: string; received_at: number } | null {
+    const stmt = this.db.prepare(`
+      SELECT id, tenant_id, device_id, jid, message_id, payload, received_at
+      FROM messages_inbox
+      WHERE device_id = ? AND message_id = ?
+      ORDER BY received_at DESC
+      LIMIT 1
+    `);
+
+    return stmt.get(deviceId, waMessageId) as any;
+  }
+
+  /**
    * Get message by idempotency key
    */
   getByIdempotencyKey(deviceId: string, idempotencyKey: string): OutboxMessage | null {

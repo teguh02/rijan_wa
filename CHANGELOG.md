@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.5] - 2025-12-22
+
+### 🐛 Fixes (Reactions)
+
+- ✅ Fixed reaction send flow: internal message ID sekarang di-resolve ke WhatsApp message key ID via `messages_outbox.wa_message_id`
+- ✅ Reaction request mendukung `fromMe` dan `participant` untuk kasus group/inbox message
+- ✅ Fixed reaction endpoint response schema (tidak lagi ter-strip jadi `{}`)
+
+### 🔔 Webhooks (Compatibility & Monitoring)
+
+- ✅ Added compatibility event alias: subscribe ke `message.status` akan menerima `message.updated`, `receipt.delivery`, dan `receipt.read`
+- ✅ Emit `device.connected`/`device.disconnected` dari Baileys connection lifecycle
+- ✅ Monitoring jobs (inbox/connection) sekarang best-effort emit webhook saat melakukan recovery/detect anomali
+
+### 🧾 Docs & Postman
+
+- ✅ Webhook docs: added optional shared-token parameter (receiver-side gate) + clarified signature header `X-Rijan-Signature`
+- ✅ Postman: aligned webhook create/update payload & tests; simplified variables
+
+### 🐳 Docker & Build
+
+- ✅ Use `node:22-alpine` base image (LTS) untuk mengurangi risiko native module install issues
+- ✅ Fixed TypeScript build issues that blocked Docker builds
+
 ## [1.3.4] - 2025-12-22
 
 ### 🧩 Debugging & Operasional

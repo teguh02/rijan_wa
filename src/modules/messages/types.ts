@@ -64,6 +64,15 @@ export interface SendReactionMessageRequest {
   to: string;
   messageId: string;
   emoji: string;
+  /**
+   * Optional: only needed when reacting to messages not created by this gateway.
+   * Defaults to true for WA message IDs, and true when messageId is an internal `msg_...`.
+   */
+  fromMe?: boolean;
+  /**
+   * Optional: group participant JID (required by WhatsApp for some group message references)
+   */
+  participant?: string;
 }
 
 export interface EditMessageRequest {

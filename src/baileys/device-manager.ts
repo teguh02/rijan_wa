@@ -575,6 +575,26 @@ export class DeviceManager {
 
         this.deviceRepo.updateStatus(deviceId, 'connected', instance.state.lastConnectAt);
         logger.info({ deviceId, waJid: instance.state.waJid }, 'Device connected');
+
+        // Trigger webhooks
+        try {
+          const { webhookService } = await import('../modules/webhooks/service');
+          await webhookService.queueDelivery({
+            id: `device-connected-${deviceId}-${Date.now()}`,
+            eventType: 'device.connected',
+            tenantId: instance.state.tenantId,
+            deviceId,
+            timestamp: Math.floor(Date.now() / 1000),
+            data: {
+              deviceId,
+              waJid: instance.state.waJid,
+              phoneNumber: instance.state.phoneNumber,
+              status: 'connected',
+            },
+          });
+        } catch (error) {
+          logger.error({ error, deviceId }, 'Failed to send device.connected webhook');
+        }
       }
 
       if (connection === 'close') {
@@ -593,6 +613,26 @@ export class DeviceManager {
         } else {
           instance.state.status = DeviceStatus.DISCONNECTED;
           this.deviceRepo.updateStatus(deviceId, 'disconnected');
+
+          // Trigger webhooks
+          try {
+            const { webhookService } = await import('../modules/webhooks/service');
+            await webhookService.queueDelivery({
+              id: `device-disconnected-${deviceId}-${Date.now()}`,
+              eventType: 'device.disconnected',
+              tenantId: instance.state.tenantId,
+              deviceId,
+              timestamp: Math.floor(Date.now() / 1000),
+              data: {
+                deviceId,
+                status: 'disconnected',
+                reason: (lastDisconnect as any)?.error?.message || (lastDisconnect as any)?.error?.output?.payload?.message,
+              },
+            });
+          } catch (error) {
+            logger.error({ error, deviceId }, 'Failed to send device.disconnected webhook');
+          }
+
           await this.cleanupDeviceInstance(deviceId, { releaseLock: true });
         }
       }

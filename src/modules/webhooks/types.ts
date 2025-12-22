@@ -1,5 +1,6 @@
 export type WebhookEvent =
   | 'message.received'
+  | 'message.status'
   | 'message.updated'
   | 'message.deleted'
   | 'receipt.delivery'

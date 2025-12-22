@@ -808,7 +808,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"messageId\": \"{{WA_MESSAGE_ID}}\",\n  \"emoji\": \"👍\"\n}"
+                  "raw": "{\n  \"to\": \"{{JID}}\",\n  \"messageId\": \"{{MESSAGE_ID}}\",\n  \"emoji\": \"👍\"\n}"
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/reaction",
@@ -1203,9 +1203,9 @@
                       "",
                       "if (pm.response.code === 200 || pm.response.code === 201) {",
                       "  const jsonData = pm.response.json();",
-                      "  if (jsonData.data && jsonData.data.id) {",
-                      "    pm.variables.set('WEBHOOK_ID', jsonData.data.id);",
-                      "    console.log('✓ WEBHOOK_ID saved:', jsonData.data.id);",
+                      "  if (jsonData && jsonData.id) {",
+                      "    pm.variables.set('WEBHOOK_ID', jsonData.id);",
+                      "    console.log('✓ WEBHOOK_ID saved:', jsonData.id);",
                       "  }",
                       "}"
                     ]
@@ -1228,7 +1228,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"url\": \"{{WEBHOOK_URL}}\",\n  \"events\": [\"message.received\", \"device.connected\"],\n  \"secret\": \"whsec_demo_123\"\n}"
+                  "raw": "{\n  \"url\": \"{{WEBHOOK_URL}}\",\n  \"events\": [\"message.received\", \"message.status\", \"device.connected\", \"device.disconnected\"],\n  \"secret\": \"whsec_demo_123\"\n}"
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks",
@@ -1294,7 +1294,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"url\": \"{{WEBHOOK_URL}}\",\n  \"events\": [\"message.received\", \"message.updated\", \"device.disconnected\"],\n  \"enabled\": true,\n  \"timeoutMs\": 5000,\n  \"maxRetries\": 3\n}"
+                  "raw": "{\n  \"url\": \"{{WEBHOOK_URL}}\",\n  \"events\": [\"message.received\", \"message.status\", \"device.connected\", \"device.disconnected\"],\n  \"enabled\": true,\n  \"timeout\": 5000,\n  \"retryCount\": 3\n}"
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
@@ -1566,7 +1566,7 @@
     },
     {
       "key": "WEBHOOK_URL",
-      "value": "https://example.com/webhook-receiver",
+      "value": "https://rija_wa.requestcatcher.com/test",
       "type": "string"
     },
     {
@@ -1581,21 +1581,6 @@
     },
     {
       "key": "IDEMPOTENCY_KEY",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "QR_CODE",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "PAIRING_CODE",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "LAST_REQUEST_ID",
       "value": "",
       "type": "string"
     }

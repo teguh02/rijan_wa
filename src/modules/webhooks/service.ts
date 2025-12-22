@@ -22,7 +22,14 @@ export class WebhookService {
    */
   getInterested(tenantId: string, eventType: WebhookEvent): Webhook[] {
     const webhooks = webhookRepository.getByTenantId(tenantId);
-    return webhooks.filter(w => w.events.includes(eventType));
+    const statusAliasTargets: WebhookEvent[] = ['message.updated', 'receipt.delivery', 'receipt.read'];
+
+    return webhooks.filter((w) => {
+      if (w.events.includes(eventType)) return true;
+      // Backward-compatible alias: `message.status` receives delivery/read/update status events.
+      if (w.events.includes('message.status') && statusAliasTargets.includes(eventType)) return true;
+      return false;
+    });
   }
 
   /**

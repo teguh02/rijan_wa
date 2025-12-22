@@ -130,6 +130,26 @@ export class InboundMessageMonitor {
             payload
           );
           ensured++;
+
+          // Trigger webhook for backfilled inbound message (best-effort)
+          try {
+            const { webhookService } = await import('../modules/webhooks/service');
+            await webhookService.queueDelivery({
+              id: messageId,
+              eventType: 'message.received',
+              tenantId: row.tenant_id,
+              deviceId: row.device_id,
+              timestamp: payload?.messageTimestamp
+                ? Number(payload.messageTimestamp)
+                : Math.floor(Date.now() / 1000),
+              data: payload,
+            });
+          } catch (error) {
+            logger.error(
+              { error, deviceId: row.device_id, tenantId: row.tenant_id, messageId },
+              'Inbound monitor failed to send message.received webhook'
+            );
+          }
         } catch (error) {
           logger.error(
             {

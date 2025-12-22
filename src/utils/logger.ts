@@ -198,11 +198,6 @@ const consoleRaw = new PassThrough();
 const fileRaw = new PassThrough();
 
 // Formatters
-const formatter = new LaravelFormatTransform({
-  timeZone: config.server.timezone,
-  env: envLabel(config.server.nodeEnv),
-});
-
 // Pipe console + file
 consoleRaw.pipe(new LaravelFormatTransform({ timeZone: config.server.timezone, env: envLabel(config.server.nodeEnv) })).pipe(process.stdout);
 fileRaw.pipe(new LaravelFormatTransform({ timeZone: config.server.timezone, env: envLabel(config.server.nodeEnv) })).pipe(

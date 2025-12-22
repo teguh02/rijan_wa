@@ -347,6 +347,8 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
             to: { type: 'string', description: 'Chat JID where the message is' },
             messageId: { type: 'string', description: 'Message ID to react to' },
             emoji: { type: 'string', description: 'Emoji reaction (empty string to remove)' },
+            fromMe: { type: 'boolean', description: 'Whether the referenced message was sent by this device (used when messageId is a WA id)' },
+            participant: { type: 'string', description: 'Group participant JID (optional; used for group message references)' },
           },
           required: ['to', 'messageId', 'emoji'],
         },
@@ -354,7 +356,9 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
           200: {
             type: 'object',
             properties: {
-              success: { type: 'boolean' },
+              id: { type: 'string', description: 'WA message key id used for reaction reference' },
+              messageId: { type: 'string', description: 'WA message key id used for reaction reference (alias of id)' },
+              status: { type: 'string' },
               timestamp: { type: 'number' },
             },
           },
@@ -362,13 +366,20 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, _reply) => {
+      await requireDeviceConnected(request as any, _reply as any);
+      await validateJidInBody(request as any, _reply as any);
       const { deviceId } = request.params;
       const tenantId = request.tenant!.id;
       const body = request.body;
 
       try {
         const result = await messageService.sendReaction(tenantId, deviceId, body);
-        return _reply.send(result);
+        return _reply.send({
+          id: result.messageId,
+          messageId: result.messageId,
+          status: result.status,
+          timestamp: Date.now(),
+        });
       } catch (error: any) {
         request.log.error(error, 'Failed to send reaction');
         throw INTERNAL_SERVER_ERROR(error.message || 'Failed to send reaction');

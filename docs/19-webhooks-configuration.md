@@ -4,46 +4,42 @@ Panduan lengkap untuk configure webhooks dan receive real-time events dari Whats
 
 ## 🎯 Overview
 
-Webhooks memungkinkan aplikasi Anda **receive real-time notifications** untuk:
-- 📨 Incoming messages (text, media, location, contact, dll)
-- ✅ Message status updates (sent, delivered, read)
-- 📞 Call notifications
-- 👥 Group events (join, leave, settings change)
 - 📱 Device status changes (connected, disconnected)
 
-## 🔑 Prerequisites
+## \U0001f4e8 Event Types
 
 - Tenant API Key tersedia
-- Webhook endpoint accessible dari internet (HTTPS recommended)
+### 2. message.status (alias)
 - Device sudah connected
 
-## 📋 Webhook Registration
+Triggered when **sent message status** changes.
 
 ### Register Webhook
+- `message.status` adalah alias untuk event status/receipt yang lebih spesifik: `message.updated`, `receipt.delivery`, `receipt.read`.
+- Jika Anda subscribe `message.status`, Anda akan tetap menerima event-event tersebut.
 
 ```bash
-curl -X POST http://localhost:3000/v1/webhooks \
+### Verify Signature
   -H "Authorization: Bearer YOUR_TENANT_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
+Setiap webhook request memiliki **signature header**:
     "url": "https://your-app.com/webhook/whatsapp",
-    "events": [
+X-Rijan-Signature: abc123...
       "message.received",
       "message.status",
       "device.connected",
       "device.disconnected"
-    ],
+function verifyWebhookSignature(payload, signature, secret) {
     "secret": "your-webhook-secret-key"
   }'
 ```
 
-Response:
-```json
+  return signature === expectedSignature;
 {
   "success": true,
   "data": {
     "webhook_id": "wh_abc123xyz789",
-    "url": "https://your-app.com/webhook/whatsapp",
+  const signature = req.headers['x-rijan-signature'];
     "events": [
       "message.received",
       "message.status",
@@ -63,12 +59,12 @@ curl -X GET http://localhost:3000/v1/webhooks \
   -H "Authorization: Bearer YOUR_TENANT_API_KEY"
 ```
 
-### Update Webhook
+    $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
 ```bash
 curl -X PUT http://localhost:3000/v1/webhooks/wh_abc123xyz789 \
   -H "Authorization: Bearer YOUR_TENANT_API_KEY" \
-  -H "Content-Type: application/json" \
+$signature = $_SERVER['HTTP_X_RIJAN_SIGNATURE'];
   -d '{
     "events": [
       "message.received",
@@ -214,12 +210,34 @@ Triggered when someone **joins a group**.
 
 ## 🔒 Webhook Security
 
+### Optional: Shared Token (Query/Path)
+
+Selain verifikasi signature, beberapa aplikasi penerima webhook biasanya menambahkan **parameter pengaman tambahan** (shared token) agar endpoint webhook **langsung menolak** request yang tidak membawa token tersebut.
+
+Karena gateway ini akan mengirim request ke `url` yang Anda simpan apa adanya, cara paling sederhana (tanpa perubahan kode di gateway) adalah menyisipkan token di **query string** atau **path**.
+
+Contoh URL (query param):
+
+```text
+https://your-app.com/webhook/whatsapp?token=YOUR_SHARED_TOKEN
+```
+
+Contoh URL (token di path):
+
+```text
+https://your-app.com/webhook/whatsapp/YOUR_SHARED_TOKEN
+```
+
+Di aplikasi penerima, validasi token dulu. Jika token tidak ada/salah, balas `401/403`.
+
+> Rekomendasi: token ini hanya “gate” tambahan. Proteksi utama tetap **HMAC signature** (`X-Rijan-Signature`).
+
 ### Verify Signature
 
 Setiap webhook request memiliki **signature header**:
 
 ```
-X-Webhook-Signature: sha256=abc123...
+X-Rijan-Signature: abc123...
 ```
 
 **Verify di aplikasi Anda**:
@@ -227,18 +245,30 @@ X-Webhook-Signature: sha256=abc123...
 ```javascript
 const crypto = require('crypto');
 
+// Optional shared token gate
+const EXPECTED_TOKEN = process.env.WEBHOOK_TOKEN;
+
 function verifyWebhookSignature(payload, signature, secret) {
   const expectedSignature = crypto
     .createHmac('sha256', secret)
     .update(JSON.stringify(payload))
     .digest('hex');
     
-  return signature === `sha256=${expectedSignature}`;
+  return signature === expectedSignature;
 }
 
 // Express.js example
 app.post('/webhook/whatsapp', (req, res) => {
-  const signature = req.headers['x-webhook-signature'];
+  // 1) Optional: shared token gate (query)
+  if (EXPECTED_TOKEN) {
+    const token = req.query.token;
+    if (token !== EXPECTED_TOKEN) {
+      return res.status(401).json({ error: 'Invalid webhook token' });
+    }
+  }
+
+  // 2) Verify signature
+  const signature = req.headers['x-rijan-signature'];
   const secret = 'your-webhook-secret-key';
   
   if (!verifyWebhookSignature(req.body, signature, secret)) {
@@ -258,13 +288,24 @@ app.post('/webhook/whatsapp', (req, res) => {
 ```php
 <?php
 function verifyWebhookSignature($payload, $signature, $secret) {
-    $expectedSignature = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+  $expectedSignature = hash_hmac('sha256', $payload, $secret);
     return hash_equals($signature, $expectedSignature);
 }
 
 $payload = file_get_contents('php://input');
-$signature = $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'];
+$signature = $_SERVER['HTTP_X_RIJAN_SIGNATURE'];
 $secret = 'your-webhook-secret-key';
+
+// Optional shared token gate (query)
+$expectedToken = getenv('WEBHOOK_TOKEN');
+if ($expectedToken) {
+  $token = $_GET['token'] ?? null;
+  if ($token !== $expectedToken) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid webhook token']);
+    exit;
+  }
+}
 
 if (!verifyWebhookSignature($payload, $signature, $secret)) {
     http_response_code(401);

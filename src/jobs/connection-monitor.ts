@@ -17,6 +17,7 @@ export class ConnectionMonitor {
   private running = false;
   private nextAttemptAt = new Map<string, number>(); // deviceId -> epoch ms
   private backoffMs = new Map<string, number>(); // deviceId -> ms
+  private lastNotifiedAt = new Map<string, number>(); // deviceId -> epoch ms (simple throttle)
 
   start(intervalMs = 3000) {
     if (this.timer) return;
@@ -63,6 +64,32 @@ export class ConnectionMonitor {
         const state = deviceManager.getDeviceState(deviceId);
         const isStarting = Boolean(state?.isStarting);
         const connectionInfo = deviceManager.getConnectionInfo(deviceId);
+
+        // Best-effort webhook notification when DB says connected but runtime is disconnected.
+        if (!connectionInfo.isConnected && row.status === 'connected') {
+          const last = this.lastNotifiedAt.get(deviceId) || 0;
+          const now = Date.now();
+          if (now - last > 30_000) {
+            this.lastNotifiedAt.set(deviceId, now);
+            try {
+              const { webhookService } = await import('../modules/webhooks/service');
+              await webhookService.queueDelivery({
+                id: `device-disconnected-monitor-${deviceId}-${now}`,
+                eventType: 'device.disconnected',
+                tenantId,
+                deviceId,
+                timestamp: Math.floor(now / 1000),
+                data: {
+                  deviceId,
+                  status: 'disconnected',
+                  reason: connectionInfo.lastError || 'monitor_detected',
+                },
+              });
+            } catch (error) {
+              logger.error({ error, deviceId, tenantId }, 'Connection monitor failed to send device.disconnected webhook');
+            }
+          }
+        }
 
         if (connectionInfo.isConnected || isStarting) {
           this.backoffMs.delete(deviceId);

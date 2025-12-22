@@ -12,7 +12,6 @@ import {
 } from './types';
 import { deviceManager } from '../../baileys/device-manager';
 import logger from '../../utils/logger';
-import crypto from 'crypto';
 import axios from 'axios';
 import { URL } from 'url';
 
@@ -454,20 +453,73 @@ export class MessageService {
     const jid = this.normalizeJid(request.to);
 
     try {
+      // Resolve message reference.
+      // - If request.messageId is an internal outbox id (msg_...), use messages_outbox.wa_message_id.
+      // - Else try inbox lookup (messages_inbox.message_id) to get a full key (participant/fromMe).
+      // - Else fall back to treating request.messageId as WA message id.
+      let key: any = null;
+      let remoteJidForKey = jid;
+
+      const outbox = this.messageRepo.getById(request.messageId);
+      if (outbox && outbox.device_id === deviceId) {
+        if (!outbox.wa_message_id) {
+          throw new Error(
+            `Message '${request.messageId}' is not sent yet (wa_message_id not available). Call GET /v1/devices/${deviceId}/messages/status/${request.messageId} and use waMessageId for reactions.`
+          );
+        }
+
+        remoteJidForKey = outbox.jid;
+        key = {
+          id: outbox.wa_message_id,
+          remoteJid: outbox.jid,
+          fromMe: true,
+        };
+      } else {
+        const inbox = this.messageRepo.getInboxByWaMessageId(deviceId, request.messageId);
+        if (inbox?.payload) {
+          try {
+            const payload = JSON.parse(inbox.payload);
+            const payloadKey = payload?.key;
+            if (payloadKey?.id) {
+              remoteJidForKey = payloadKey.remoteJid || inbox.jid || jid;
+              key = {
+                id: payloadKey.id,
+                remoteJid: payloadKey.remoteJid || inbox.jid || jid,
+                fromMe: Boolean(payloadKey.fromMe),
+                participant: payloadKey.participant || undefined,
+              };
+            }
+          } catch {
+            // ignore parse errors; we'll fall back
+          }
+        }
+
+        if (!key) {
+          const fromMeDefault = typeof request.fromMe === 'boolean' ? request.fromMe : true;
+          key = {
+            id: request.messageId,
+            remoteJid: jid,
+            fromMe: fromMeDefault,
+            participant: request.participant ? this.normalizeJid(request.participant) : undefined,
+          };
+        }
+      }
+
       deviceManager.recordProtocolOut(deviceId, 'sendMessage', {
-        jid,
+        jid: remoteJidForKey,
         type: 'reaction',
         emoji: request.emoji,
+        messageId: key?.id,
       });
 
-      await socket.sendMessage(jid, {
+      await socket.sendMessage(remoteJidForKey, {
         react: {
           text: request.emoji,
-          key: { id: request.messageId, remoteJid: jid },
+          key,
         },
       });
 
-      return { messageId: crypto.randomBytes(16).toString('hex'), status: MessageStatus.SENT };
+      return { messageId: String(key?.id || request.messageId), status: MessageStatus.SENT };
     } catch (error) {
       logger.error({ error }, 'Failed to send reaction');
       throw error;
