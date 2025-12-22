@@ -109,72 +109,9 @@ Di bawah ini adalah gambaran **alur lengkap** dari pertama kali sistem disiapkan
 5. Tenant minta **QR**, lalu scan di WhatsApp (Linked devices) sampai status **`connected`**.
 6. Setelah connected, tenant bisa **kirim pesan** via endpoint messages.
 
-Berikut flowchart-nya (kode Mermaid). Kamu bisa copy-paste untuk di-render jadi gambar:
+Berikut flowchart-nya (gambar):
 
-```mermaid
-flowchart TD
-  %% End-to-end flow: Admin creates tenant/device, Tenant pairs WhatsApp, then sends message
-
-  start([Mulai]):::system
-
-  subgraph Admin[Admin]
-    direction TB
-    a1[Generate MASTER PASSWORD\n(simpan baik-baik)]:::admin
-    a2[Admin API: Create Tenant\nPOST /admin/tenants\nHeader: X-Master-Key]:::admin
-    a3[Terima tenant_id + tenant_api_key\n(bagikan ke tenant)]:::admin
-    a4[Admin API: Create Device\nPOST /admin/tenants/{tenant_id}/devices\nHeader: X-Master-Key]:::admin
-    a5[Terima device_id\n(status: disconnected)]:::admin
-  end
-
-  subgraph Tenant[Tenant]
-    direction TB
-    t1[Start Device\nPOST /v1/devices/{device_id}/start\nHeader: Authorization: Bearer tenant_api_key]:::tenant
-    t2[Request QR\nPOST /v1/devices/{device_id}/pairing/qr]:::tenant
-    t3[Scan QR di WhatsApp\nLinked devices / Perangkat tertaut]:::tenant
-    t4[Send Message\nPOST /v1/devices/{device_id}/messages/text\nBody: to, text]:::tenant
-  end
-
-  subgraph WhatsApp[WhatsApp]
-    direction TB
-    w1[(WA Account/Device)]:::wa
-    w2[Pairing Session]:::wa
-    w3[Deliver Message]:::wa
-  end
-
-  db[(SQLite + Sessions Storage)]:::storage
-
-  start --> a1 --> a2
-  a2 --> okTenant{Tenant dibuat?}:::decision
-  okTenant -- Tidak --> fixTenant[Periksa MASTER PASSWORD\n& response error]:::system --> a2
-  okTenant -- Ya --> a3 --> a4
-
-  a4 --> okDevice{Device dibuat?}:::decision
-  okDevice -- Tidak --> fixDevice[Periksa tenant_id\n& payload request]:::system --> a4
-  okDevice -- Ya --> a5
-
-  %% Handover to tenant
-  a3 -. bagikan tenant_api_key .-> t1
-  a5 -. bagikan device_id .-> t1
-
-  %% Tenant pairing & sending
-  t1 --> t2 --> t3 --> w1 --> w2
-  w2 --> paired{Pairing berhasil?}:::decision
-  paired -- Tidak --> t2
-  paired -- Ya --> connected[Device status: connected\n(siap kirim pesan)]:::system
-  connected --> t4 --> w3 --> done([Selesai: messageId + status]):::system
-
-  %% Storage side-effects
-  a2 -. simpan tenant .-> db
-  a4 -. simpan device .-> db
-  w2 -. simpan session .-> db
-
-  classDef admin fill:#E8F3FF,stroke:#2B6CB0,stroke-width:1px,color:#0B1F33;
-  classDef tenant fill:#ECFDF3,stroke:#2F855A,stroke-width:1px,color:#0B1F33;
-  classDef wa fill:#F7FAFC,stroke:#4A5568,stroke-width:1px,color:#0B1F33;
-  classDef storage fill:#FFF7ED,stroke:#C05621,stroke-width:1px,color:#0B1F33;
-  classDef system fill:#FFFFFF,stroke:#A0AEC0,stroke-width:1px,color:#0B1F33;
-  classDef decision fill:#F7FAFC,stroke:#805AD5,stroke-width:1px,color:#0B1F33;
-```
+![Flowchart alur end-to-end (Admin → Tenant → Kirim Pesan)](../assets/flowchart-end-to-end-id.png)
 
 Catatan penting:
 

@@ -71,6 +71,23 @@ INFO: Server listening at http://localhost:3000
 
 ## Quick Test Flow
 
+### 🧭 Ilustrasi Alur End-to-End (Admin → Tenant → Kirim Pesan)
+
+Below is an overview of the **complete flow** from the initial system setup until a tenant can send messages.
+
+**In short:**
+
+1. **Admin creates a tenant** using `X-Master-Key` (the master password).
+2. The system returns **`tenant_id` + `tenant_api_key`** (share these with the tenant).
+3. **Admin creates a device** for that tenant → gets a **`device_id`**.
+4. **Tenant starts the device** using `Authorization: Bearer tenant_api_key`.
+5. The tenant requests a **QR code**, then scans it in WhatsApp (Linked devices) until the status becomes **`connected`**.
+6. Once connected, the tenant can **send messages** via the messages endpoint.
+
+Flowchart (image):
+
+![End-to-end flowchart (Admin → Tenant → Send Message)](../assets/flowchart-end-to-end-en.png)
+
 ### Step 1: Create a tenant (Admin)
 
 ```bash
