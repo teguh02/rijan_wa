@@ -192,22 +192,110 @@ export class MessageRepository {
     `);
 
     const rows = stmt.all(deviceId, jid, limit, offset) as any[];
-    
-    return rows.map(row => {
-      const payload = JSON.parse(row.payload);
-      return {
-        id: row.id,
-        waMessageId: row.message_id,
-        from: payload.from || jid,
-        to: payload.to || '',
-        type: row.message_type,
-        text: payload.text,
-        caption: payload.caption,
-        mediaUrl: payload.mediaUrl,
-        timestamp: row.received_at,
-        fromMe: payload.fromMe || false,
-      };
-    });
+
+    const safeJsonParse = (value: any): any => {
+      if (typeof value !== 'string') return value;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    };
+
+    const inferTypeFromBaileys = (baileysMsg: any): MessageType => {
+      const msg = baileysMsg?.message;
+      if (!msg) return (baileysMsg?.message_type as MessageType) || MessageType.TEXT;
+
+      if (msg.conversation || msg.extendedTextMessage?.text) return MessageType.TEXT;
+      if (msg.imageMessage) return MessageType.IMAGE;
+      if (msg.videoMessage) return MessageType.VIDEO;
+      if (msg.audioMessage) return MessageType.AUDIO;
+      if (msg.documentMessage) return MessageType.DOCUMENT;
+      if (msg.stickerMessage) return MessageType.STICKER;
+      if (msg.locationMessage || msg.liveLocationMessage) return MessageType.LOCATION;
+      if (msg.contactMessage || msg.contactsArrayMessage) return MessageType.CONTACT;
+      if (msg.reactionMessage) return MessageType.REACTION;
+      if (msg.pollCreationMessage || msg.pollUpdateMessage) return MessageType.POLL;
+
+      // fallback
+      const dbType = String(baileysMsg?.message_type || '').toLowerCase();
+      if (Object.values(MessageType).includes(dbType as MessageType)) return dbType as MessageType;
+      return MessageType.TEXT;
+    };
+
+    const extractTextAndCaption = (baileysMsg: any): { text?: string; caption?: string } => {
+      const msg = baileysMsg?.message;
+      if (!msg) return {};
+      const text = msg.conversation || msg.extendedTextMessage?.text;
+      const caption =
+        msg.imageMessage?.caption ||
+        msg.videoMessage?.caption ||
+        msg.documentMessage?.caption;
+      return { text, caption };
+    };
+
+    return rows
+      .map((row) => {
+        const payload = safeJsonParse(row.payload);
+
+        // Newer shape (Baileys WAMessage-ish): { key, message, pushName, messageTimestamp, ... }
+        if (payload && payload.key && payload.message) {
+          const key = payload.key;
+          const fromMe = Boolean(key.fromMe);
+          const from = key.participant || key.remoteJid || jid;
+          const inferredType = inferTypeFromBaileys(payload);
+          const { text, caption } = extractTextAndCaption(payload);
+
+          return {
+            id: row.id,
+            waMessageId: row.message_id,
+            from,
+            to: jid,
+            type: inferredType,
+            text,
+            caption,
+            mediaUrl: undefined,
+            timestamp: row.received_at,
+            fromMe,
+          } as Message;
+        }
+
+        // Legacy/simple normalized shape: { from, to, text, caption, mediaUrl, fromMe }
+        if (payload && typeof payload === 'object') {
+          const from = payload.from || jid;
+          const to = payload.to || jid;
+          const fromMe = Boolean(payload.fromMe);
+          const dbType = String(row.message_type || '').toLowerCase();
+          const type = (Object.values(MessageType).includes(dbType as MessageType)
+            ? (dbType as MessageType)
+            : MessageType.TEXT);
+
+          return {
+            id: row.id,
+            waMessageId: row.message_id,
+            from,
+            to,
+            type,
+            text: payload.text,
+            caption: payload.caption,
+            mediaUrl: payload.mediaUrl,
+            timestamp: row.received_at,
+            fromMe,
+          } as Message;
+        }
+
+        // If payload is corrupt, still return something useful
+        return {
+          id: row.id,
+          waMessageId: row.message_id,
+          from: jid,
+          to: jid,
+          type: MessageType.TEXT,
+          timestamp: row.received_at,
+          fromMe: false,
+        } as Message;
+      })
+      .filter(Boolean);
   }
 }
 

@@ -2,16 +2,122 @@ import { FastifyInstance } from 'fastify';
 import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
 import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
 import { deviceManager } from '../../baileys/device-manager';
-import { DeviceRepository, AuditLogRepository, DeviceSessionRepository } from '../../storage/repositories';
+import { ChatRepository, DeviceRepository, AuditLogRepository, DeviceSessionRepository } from '../../storage/repositories';
 import { AppError, ErrorCode, StandardResponse } from '../../types';
 
 const deviceRepo = new DeviceRepository();
 const auditRepo = new AuditLogRepository();
 const deviceSessionRepo = new DeviceSessionRepository();
+const chatRepo = new ChatRepository();
 
 export async function registerDeviceRoutes(server: FastifyInstance): Promise<void> {
   // All device routes require tenant authentication
   server.addHook('preHandler', verifyTenantApiKey);
+
+  // Debug: chat sync state
+  server.get<{ Params: { deviceId: string } }>(
+    '/v1/devices/:deviceId/debug/chats-sync',
+    {
+      preHandler: verifyDeviceOwnership,
+      schema: {
+        tags: ['devices'],
+        description: 'Debug endpoint for chat history sync (DB-backed chats)',
+        security: [{ apiKey: [] }],
+        params: {
+          type: 'object',
+          required: ['deviceId'],
+          properties: {
+            deviceId: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { deviceId } = request.params;
+      const tenantId = request.tenant!.id;
+
+      const device = deviceRepo.findById(deviceId, tenantId);
+      if (!device) {
+        throw new AppError(ErrorCode.NOT_FOUND, 'Device not found', 404);
+      }
+
+      const connectionInfo = deviceManager.getConnectionInfo(deviceId);
+      const sync = chatRepo.getSyncState(deviceId);
+      const chatCount = chatRepo.countByDevice(deviceId);
+
+      const response: StandardResponse = {
+        success: true,
+        data: {
+          deviceId,
+          connection: connectionInfo,
+          db: {
+            chatCount,
+          },
+          sync: {
+            lastHistorySyncAt: sync?.last_history_sync_at ?? null,
+            lastHistorySyncChatsCount: sync?.last_history_sync_chats_count ?? null,
+            lastChatsUpsertAt: sync?.last_chats_upsert_at ?? null,
+            lastChatsUpdateAt: sync?.last_chats_update_at ?? null,
+            lastChatsDeleteAt: sync?.last_chats_delete_at ?? null,
+            updatedAt: sync?.updated_at ?? null,
+          },
+        },
+        requestId: request.requestId,
+      };
+
+      reply.send(response);
+    }
+  );
+
+  // Debug: protocol tap ring buffer (Baileys decrypted-level events)
+  server.get<{ Params: { deviceId: string }; Querystring: { limit?: number } }>(
+    '/v1/devices/:deviceId/debug/protocol',
+    {
+      preHandler: verifyDeviceOwnership,
+      schema: {
+        tags: ['devices'],
+        description: 'Debug endpoint to inspect recent Baileys events per device (ring buffer). Enable with DEBUG_PROTOCOL_TAP=true.',
+        security: [{ apiKey: [] }],
+        params: {
+          type: 'object',
+          required: ['deviceId'],
+          properties: {
+            deviceId: { type: 'string' },
+          },
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            limit: { type: 'number', minimum: 1, maximum: 200, default: 50 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { deviceId } = request.params;
+      const { limit = 50 } = request.query;
+      const tenantId = request.tenant!.id;
+
+      const device = deviceRepo.findById(deviceId, tenantId);
+      if (!device) {
+        throw new AppError(ErrorCode.NOT_FOUND, 'Device not found', 404);
+      }
+
+      const tap = deviceManager.getProtocolTap(deviceId, limit);
+
+      const response: StandardResponse = {
+        success: true,
+        data: {
+          deviceId,
+          enabled: tap.enabled,
+          items: tap.items,
+        },
+        requestId: request.requestId,
+      };
+
+      reply.send(response);
+    }
+  );
 
   // List devices milik tenant
   server.get('/v1/devices', {

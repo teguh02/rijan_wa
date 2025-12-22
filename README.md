@@ -119,6 +119,48 @@ Auth state Baileys menggunakan metode standar `useMultiFileAuthState` (file JSON
 - `device_sessions.wa_jid`, `device_sessions.wa_name` (jika tersedia)
 - `device_sessions.session_kind` (format session)
 
+### 4. List Chats (History Sync → SQLite)
+
+Endpoint `GET /v1/devices/:deviceId/chats` mengambil daftar chat dari SQLite (`chats` table). Data ini dipopulasi dari event Baileys:
+- `messaging-history.set` (History Sync) untuk initial hydration
+- `chats.upsert`, `chats.update`, `chats.delete` untuk incremental updates
+
+Untuk troubleshooting, gunakan debug endpoint:
+- `GET /v1/devices/:deviceId/debug/chats-sync`
+
+### 5. Debug Protocol Tap (Baileys Event Tap)
+
+Untuk debug bagaimana Baileys memproses payload WebSocket **(hasil dekripsi)** menjadi event (mis. `messaging-history.set`, `chats.upsert`, `messages.upsert`), gateway menyediakan **ring buffer per device**.
+
+**Aktifkan:** set env berikut saat menjalankan server:
+
+```bash
+DEBUG_PROTOCOL_TAP=true
+```
+
+**Ambil data ring buffer (tenant + ownership required):**
+
+```bash
+curl -H "Authorization: Bearer $TENANT_API_KEY" \
+  "$BASE_URL/v1/devices/$DEVICE_ID/debug/protocol?limit=50"
+```
+
+**Output** berisi item terakhir (max 200) dengan field:
+- `receivedAt`: timestamp (ms)
+- `deviceId`
+- `direction`: `in` | `out`
+- `nodeTag`: nama event (fallback) atau tag node (jika tersedia)
+- `nodePreview`: ringkasan payload (maks 2KB, dengan redaction)
+- `rawSize`: ukuran estimasi payload
+
+**Cara mencari “chat list sync”:**
+- Cari `nodeTag` seperti `messaging-history.set` (initial hydration) dan `chats.upsert/chats.update/chats.delete` (incremental).
+- Jika list chat tidak terisi, pastikan event tersebut muncul, lalu cek log DB dan endpoint `debug/chats-sync`.
+
+**Catatan keamanan:** preview akan melakukan redaction key sensitif (`creds`, `keys`, `privKey`, `token`, dll) dan membatasi panjang output.
+
+**Catatan implementasi:** Baileys tidak mengekspos hook publik untuk plaintext buffer tepat setelah Noise decode. Karena itu, tap default berjalan di level `sock.ev.process()` sebagai titik terdekat yang tetap merekam event hasil dekripsi.
+
 ## 🔄 Alur Request
 
 ### Admin Flow
@@ -181,6 +223,22 @@ Update device last_seen
     ↓
 Response
 ```
+
+## 🧾 Logging (Laravel-style, Daily Files)
+
+Gateway mencatat aktivitas sistem (HTTP request, job, Baileys lifecycle, error) ke file log harian.
+
+**Lokasi default:** `./logs/YYYY-MM-DD.log`
+
+**Format (mirip Laravel):**
+```
+[2025-12-21 15:21:05] local.INFO: Incoming request {"requestId":"...","method":"GET","url":"/health",...}
+```
+
+**Konfigurasi:**
+- `LOG_DIR` (optional) — default `./logs`
+
+**Docker:** `docker-compose.yml` sudah menambahkan volume `rijan_wa_logs` ke `/app/logs` agar log persisten.
 
 ## 📊 Data Model
 

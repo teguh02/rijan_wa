@@ -2,45 +2,46 @@ import { WASocket } from '@whiskeysockets/baileys';
 import { deviceManager } from '../../baileys/device-manager';
 import { Chat, Message } from './types';
 import { MessageRepository } from './repository';
+import { ChatRepository } from '../../storage/repositories';
 import logger from '../../utils/logger';
 
 export class ChatService {
   private messageRepo = new MessageRepository();
+  private chatRepo = new ChatRepository();
   private chatCache = new Map<string, Chat[]>(); // deviceId => chats
 
   /**
    * Get chats for device
    */
-  async getChats(deviceId: string, limit = 50, offset = 0): Promise<Chat[]> {
+  async getChats(
+    deviceId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{ chats: Chat[]; count: number; synced: boolean; lastHistorySyncAt?: number | null }> {
     try {
-      // Try cache first
-      const cached = this.chatCache.get(deviceId);
-      if (cached && cached.length > 0) {
-        return cached.slice(offset, offset + limit);
-      }
+      const rows = this.chatRepo.listByDevice(deviceId, limit, offset);
+      const count = this.chatRepo.countByDevice(deviceId);
+      const sync = this.chatRepo.getSyncState(deviceId);
 
-      // DeviceManager maintains an in-memory chat index populated from Baileys events.
-      const rawChats = deviceManager.getChatsSnapshot(deviceId);
-      const chats: Chat[] = rawChats
-        .map((chat: any) => {
-          const jid = chat?.id || chat?.jid;
-          if (!jid) return null;
+      const chats: Chat[] = rows.map((r) => ({
+        jid: r.jid,
+        name: r.name || r.jid,
+        isGroup: r.is_group === 1,
+        unreadCount: r.unread_count || 0,
+        lastMessageTime: r.last_message_time || undefined,
+        archived: r.archived === 1,
+        muted: r.muted === 1,
+      }));
 
-          return {
-            jid,
-            name: chat?.name || jid,
-            isGroup: typeof jid === 'string' ? jid.endsWith('@g.us') : false,
-            unreadCount: chat?.unreadCount || 0,
-            lastMessageTime: chat?.conversationTimestamp,
-            archived: chat?.archived || false,
-            muted: Boolean(chat?.muteEndTime),
-          } as Chat;
-        })
-        .filter(Boolean) as Chat[];
-
-      chats.sort((a, b) => Number(b.lastMessageTime || 0) - Number(a.lastMessageTime || 0));
+      // Keep cache as a small optimization for repeated reads
       this.chatCache.set(deviceId, chats);
-      return chats.slice(offset, offset + limit);
+
+      return {
+        chats,
+        count,
+        synced: Boolean(sync?.last_history_sync_at),
+        lastHistorySyncAt: sync?.last_history_sync_at ?? null,
+      };
     } catch (error) {
       logger.error({ error, deviceId }, 'Failed to get chats');
       throw error;

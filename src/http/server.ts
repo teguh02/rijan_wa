@@ -14,19 +14,7 @@ import { closeDatabase } from '../storage/database';
 
 export async function createServer(): Promise<FastifyInstance> {
   const server = Fastify({
-    logger: {
-      level: config.server.logLevel,
-      ...(config.server.nodeEnv === 'development' && {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            ignore: 'pid,hostname',
-            translateTime: `SYS:HH:MM:ss ${config.server.timezone}`,
-          },
-        },
-      }),
-    },
+    loggerInstance: logger,
     requestIdLogLabel: 'requestId',
     disableRequestLogging: true,
     trustProxy: true,
@@ -165,7 +153,7 @@ export async function startServer(): Promise<void> {
     await registerDeviceRoutes(server);
     await server.register(messagesRoutes, { prefix: '/v1/devices' });
     await server.register(mediaRoutes, { prefix: '/v1/devices' });
-    await server.register(webhooksRoutes, { prefix: '/v1' });
+    await server.register(webhooksRoutes, { prefix: '/v1/webhooks' });
     await server.register(eventsRoutes, { prefix: '/v1/devices/:deviceId/events' });
     await server.register(groupsRoutes, { prefix: '/v1/devices/:deviceId/groups' });
     await server.register(privacyRoutes, { prefix: '/v1/devices/:deviceId/privacy' });
@@ -182,6 +170,12 @@ export async function startServer(): Promise<void> {
     const { messageProcessor } = await import('../jobs/message-processor');
     messageProcessor.start();
 
+    const { inboundMessageMonitor } = await import('../jobs/inbound-message-monitor');
+    inboundMessageMonitor.start(1000);
+
+    const { connectionMonitor } = await import('../jobs/connection-monitor');
+    connectionMonitor.start(3000);
+
     // Recover devices from previous session
     const { deviceManager } = await import('../baileys/device-manager');
     logger.info('Starting device recovery...');
@@ -195,6 +189,28 @@ export async function startServer(): Promise<void> {
       try {
         // Close HTTP server
         await server.close();
+
+        // Stop background jobs
+        try {
+          const { messageProcessor } = await import('../jobs/message-processor');
+          messageProcessor.stop();
+        } catch (error) {
+          logger.warn({ error }, 'Failed to stop message processor');
+        }
+
+        try {
+          const { inboundMessageMonitor } = await import('../jobs/inbound-message-monitor');
+          inboundMessageMonitor.stop();
+        } catch (error) {
+          logger.warn({ error }, 'Failed to stop inbound message monitor');
+        }
+
+        try {
+          const { connectionMonitor } = await import('../jobs/connection-monitor');
+          connectionMonitor.stop();
+        } catch (error) {
+          logger.warn({ error }, 'Failed to stop connection monitor');
+        }
 
         // Release device locks
         try {

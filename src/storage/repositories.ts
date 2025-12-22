@@ -44,6 +44,31 @@ export interface DeviceSessionMeta {
   wa_name?: string | null;
 }
 
+export interface ChatRow {
+  device_id: string;
+  tenant_id: string;
+  jid: string;
+  name?: string | null;
+  is_group: 0 | 1;
+  unread_count: number;
+  last_message_time?: number | null;
+  archived: 0 | 1;
+  muted: 0 | 1;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface DeviceChatSyncRow {
+  device_id: string;
+  tenant_id: string;
+  last_history_sync_at?: number | null;
+  last_history_sync_chats_count?: number | null;
+  last_chats_upsert_at?: number | null;
+  last_chats_update_at?: number | null;
+  last_chats_delete_at?: number | null;
+  updated_at: number;
+}
+
 export class TenantRepository {
   private db = getDatabase();
 
@@ -227,5 +252,154 @@ export class DeviceSessionRepository {
     `);
 
     return stmt.all(tenantId, limit, offset) as DeviceSessionMeta[];
+  }
+}
+
+export class ChatRepository {
+  private db = getDatabase();
+
+  upsertMany(
+    tenantId: string,
+    deviceId: string,
+    chats: Array<{
+      jid: string;
+      name?: string | null;
+      isGroup: boolean;
+      unreadCount?: number | null;
+      lastMessageTime?: number | null;
+      archived?: boolean | null;
+      muted?: boolean | null;
+    }>
+  ): void {
+    if (!chats?.length) return;
+    const now = Math.floor(Date.now() / 1000);
+
+    const stmt = this.db.prepare(`
+      INSERT INTO chats
+        (device_id, tenant_id, jid, name, is_group, unread_count, last_message_time, archived, muted, created_at, updated_at)
+      VALUES
+        (?, ?, ?, ?, ?, COALESCE(?, 0), ?, COALESCE(?, 0), COALESCE(?, 0), COALESCE((SELECT created_at FROM chats WHERE device_id = ? AND jid = ?), ?), ?)
+      ON CONFLICT(device_id, jid) DO UPDATE SET
+        name = COALESCE(excluded.name, chats.name),
+        is_group = excluded.is_group,
+        unread_count = CASE WHEN ? IS NULL THEN chats.unread_count ELSE ? END,
+        last_message_time = COALESCE(excluded.last_message_time, chats.last_message_time),
+        archived = CASE WHEN ? IS NULL THEN chats.archived ELSE ? END,
+        muted = CASE WHEN ? IS NULL THEN chats.muted ELSE ? END,
+        updated_at = excluded.updated_at
+    `);
+
+    const tx = this.db.transaction(() => {
+      for (const chat of chats) {
+        const unreadCount =
+          typeof chat.unreadCount === 'number' && Number.isFinite(chat.unreadCount) ? chat.unreadCount : null;
+        const lastMessageTime =
+          typeof chat.lastMessageTime === 'number' && Number.isFinite(chat.lastMessageTime)
+            ? chat.lastMessageTime
+            : null;
+        const archived = chat.archived == null ? null : chat.archived ? 1 : 0;
+        const muted = chat.muted == null ? null : chat.muted ? 1 : 0;
+
+        stmt.run(
+          deviceId,
+          tenantId,
+          chat.jid,
+          chat.name ?? null,
+          chat.isGroup ? 1 : 0,
+          unreadCount,
+          lastMessageTime,
+          archived,
+          muted,
+          deviceId,
+          chat.jid,
+          now,
+          now,
+          unreadCount,
+          unreadCount,
+          archived,
+          archived,
+          muted,
+          muted
+        );
+      }
+    });
+
+    tx();
+  }
+
+  listByDevice(deviceId: string, limit = 50, offset = 0): ChatRow[] {
+    const stmt = this.db.prepare(`
+      SELECT *
+      FROM chats
+      WHERE device_id = ?
+      ORDER BY COALESCE(last_message_time, 0) DESC, updated_at DESC
+      LIMIT ? OFFSET ?
+    `);
+    return stmt.all(deviceId, limit, offset) as ChatRow[];
+  }
+
+  countByDevice(deviceId: string): number {
+    const stmt = this.db.prepare('SELECT COUNT(*) as c FROM chats WHERE device_id = ?');
+    const row = stmt.get(deviceId) as { c: number };
+    return row?.c || 0;
+  }
+
+  deleteMany(deviceId: string, jids: string[]): number {
+    if (!jids?.length) return 0;
+    const stmt = this.db.prepare(`DELETE FROM chats WHERE device_id = ? AND jid = ?`);
+    const tx = this.db.transaction(() => {
+      let deleted = 0;
+      for (const jid of jids) {
+        const res = stmt.run(deviceId, jid);
+        deleted += res.changes || 0;
+      }
+      return deleted;
+    });
+    return tx();
+  }
+
+  getSyncState(deviceId: string): DeviceChatSyncRow | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM device_chat_sync WHERE device_id = ?
+    `);
+    return stmt.get(deviceId) as DeviceChatSyncRow | null;
+  }
+
+  markHistorySync(tenantId: string, deviceId: string, chatsCount: number): void {
+    const now = Math.floor(Date.now() / 1000);
+    const stmt = this.db.prepare(`
+      INSERT INTO device_chat_sync
+        (device_id, tenant_id, last_history_sync_at, last_history_sync_chats_count, updated_at)
+      VALUES
+        (?, ?, ?, ?, ?)
+      ON CONFLICT(device_id) DO UPDATE SET
+        tenant_id = excluded.tenant_id,
+        last_history_sync_at = excluded.last_history_sync_at,
+        last_history_sync_chats_count = excluded.last_history_sync_chats_count,
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(deviceId, tenantId, now, chatsCount, now);
+  }
+
+  markChatsEvent(tenantId: string, deviceId: string, event: 'upsert' | 'update' | 'delete'): void {
+    const now = Math.floor(Date.now() / 1000);
+    const column =
+      event === 'upsert'
+        ? 'last_chats_upsert_at'
+        : event === 'update'
+          ? 'last_chats_update_at'
+          : 'last_chats_delete_at';
+
+    const stmt = this.db.prepare(`
+      INSERT INTO device_chat_sync
+        (device_id, tenant_id, ${column}, updated_at)
+      VALUES
+        (?, ?, ?, ?)
+      ON CONFLICT(device_id) DO UPDATE SET
+        tenant_id = excluded.tenant_id,
+        ${column} = excluded.${column},
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(deviceId, tenantId, now, now);
   }
 }

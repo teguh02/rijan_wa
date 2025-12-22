@@ -926,7 +926,64 @@
           "name": "Chats",
           "item": [
             {
+              "name": "Debug Chats Sync",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", () => {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Response is valid JSON\", () => {",
+                      "  pm.response.to.have.jsonBody();",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TENANT_API_KEY}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/debug/chats-sync",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["v1", "devices", "{{DEVICE_ID}}", "debug", "chats-sync"]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "List Chats",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", () => {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"List Chats response shape\", () => {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('synced');",
+                      "  pm.expect(json).to.have.property('count');",
+                      "  pm.expect(json).to.have.property('limit');",
+                      "  pm.expect(json).to.have.property('offset');",
+                      "  pm.expect(json).to.have.property('chats');",
+                      "  pm.expect(Array.isArray(json.chats)).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
               "request": {
                 "method": "GET",
                 "header": [

@@ -34,6 +34,9 @@ services:
       
       # Persist Baileys sessions (jika menggunakan file-based storage)
       - rijan_wa_sessions:/app/sessions
+
+      # Persist application logs (1 file per day)
+      - rijan_wa_logs:/app/logs
     networks:
       - rijan_wa_network
     healthcheck:
@@ -59,6 +62,8 @@ volumes:
   rijan_wa_data:
     driver: local
   rijan_wa_sessions:
+    driver: local
+  rijan_wa_logs:
     driver: local
 
 networks:

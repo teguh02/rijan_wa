@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.4] - 2025-12-22
+
+### 🧩 Debugging & Operasional
+
+- ✅ Added per-device **Protocol Tap** ring buffer (200 item) untuk inspeksi event Baileys hasil dekripsi (guarded by `DEBUG_PROTOCOL_TAP=true`)
+- ✅ Added endpoint: `GET /v1/devices/:deviceId/debug/protocol?limit=50`
+- ✅ Added **Laravel-style daily logging** ke folder `./logs/YYYY-MM-DD.log` + redaction key sensitif
+- ✅ Docker Compose: added volume untuk persist logs (`/app/logs`)
+
+### 🔁 Monitoring Jobs
+
+- ✅ Connection monitor lebih responsif (interval sekarang lebih cepat)
+- ✅ Inbound message monitor lebih realtime (scan interval dipercepat)
+
+### 🐛 Fixes
+
+- ✅ Fixed Webhooks routing prefix sehingga `POST/GET /v1/webhooks` berfungsi (tidak salah match ke `/:id`)
+- ✅ Fixed “Get Chat Messages” response kosong karena schema filtering; mapping inbox payload dibuat lebih robust
+
 ## [1.3.2] - 2025-12-21
 
 ### 🔌 Baileys Session Refactor (Multi-Tenant)
@@ -23,6 +42,15 @@ All notable changes to this project will be documented in this file.
 #### 🐛 Bug Fixes
 
 - ✅ QR code retrieval now works while device status is `pairing` (returns cached QR)
+
+## [1.3.3] - 2025-12-21
+
+### 💬 List Chats (DB-Backed)
+
+- ✅ List Chats sekarang mengambil data dari SQLite (`chats` table) sebagai source-of-truth
+- ✅ History Sync dari Baileys (`messaging-history.set`) akan persist chat list ke DB
+- ✅ Incremental updates via `chats.upsert/update/delete` ikut dipersist
+- ✅ Added debug endpoint: `GET /v1/devices/:deviceId/debug/chats-sync`
 
 ## [1.3.1] - 2025-12-21
 

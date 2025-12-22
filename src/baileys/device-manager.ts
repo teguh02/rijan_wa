@@ -9,11 +9,14 @@ import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import { BaileysAuthStore, useDatabaseAuthState } from './auth-store';
 import { DeviceStatus, DeviceState, PairingMethod, DeviceConnectionInfo } from './types';
-import { DeviceRepository } from '../storage/repositories';
+import { ChatRepository, DeviceRepository } from '../storage/repositories';
 import logger from '../utils/logger';
 import { DistributedLock } from '../utils/distributed-lock';
 import config from '../config';
+import { isProtocolTapEnabled, ProtocolTapBuffer, type ProtocolTapItem } from './protocol-tap';
 // import crypto from 'crypto';
+
+const PROTOCOL_TAP_ENABLED = isProtocolTapEnabled();
 
 /**
  * DeviceManager - Mengelola lifecycle Baileys socket per device
@@ -22,6 +25,7 @@ export class DeviceManager {
   private devices = new Map<string, DeviceInstance>();
   private authStore = new BaileysAuthStore();
   private deviceRepo = new DeviceRepository();
+  private chatRepo = new ChatRepository();
   private distributedLock: DistributedLock;
   private static instance: DeviceManager;
 
@@ -130,6 +134,7 @@ export class DeviceManager {
       socket: null as any,
       startedAt: Date.now(),
       chatIndex: new Map(),
+      protocolTap: PROTOCOL_TAP_ENABLED ? new ProtocolTapBuffer(deviceId) : undefined,
     };
 
     this.devices.set(deviceId, instance);
@@ -150,7 +155,9 @@ export class DeviceManager {
           keys: makeCacheableSignalKeyStore(authState.keys, logger),
         },
         printQRInTerminal: false,
-        browser: Browsers.ubuntu('Rijan WA Gateway'),
+        // Baileys will present itself as a Desktop client. This impacts how WhatsApp treats the session.
+        // See Baileys wiki/docs around history sync behavior & client identity.
+        browser: Browsers.windows('Rijan WA Gateway'),
         getMessage: async (_key) => {
           return { conversation: '' };
         },
@@ -388,6 +395,31 @@ export class DeviceManager {
   }
 
   /**
+   * DEBUG: last protocol tap entries for a device.
+   * Only populated when DEBUG_PROTOCOL_TAP=true.
+   */
+  getProtocolTap(deviceId: string, limit = 50): { enabled: boolean; items: ProtocolTapItem[] } {
+    if (!PROTOCOL_TAP_ENABLED) return { enabled: false, items: [] };
+
+    const instance = this.devices.get(deviceId);
+    if (!instance?.protocolTap) return { enabled: true, items: [] };
+
+    const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.min(Number(limit), 200)) : 50;
+    return { enabled: true, items: instance.protocolTap.list(safeLimit) };
+  }
+
+  /**
+   * DEBUG: record a high-level outgoing operation.
+   * This is not raw encrypted WS traffic; it's meant to correlate API actions with Baileys events.
+   */
+  recordProtocolOut(deviceId: string, nodeTag: string, payload: unknown): void {
+    if (!PROTOCOL_TAP_ENABLED) return;
+    const instance = this.devices.get(deviceId);
+    if (!instance?.protocolTap) return;
+    instance.protocolTap.record('out', { nodeTag, payload });
+  }
+
+  /**
    * Setup event handlers untuk Baileys socket
    */
   private setupEventHandlers(
@@ -399,23 +431,109 @@ export class DeviceManager {
     const instance = this.devices.get(deviceId);
     if (!instance) return;
 
-    // Chat history + chat list hydration
-    socket.ev.on('messaging-history.set', async ({ chats }) => {
+    // DEBUG protocol tap (fallback): capture decrypted-level Baileys events before app processing.
+    // The Noise frame plaintext buffer isn't exposed publicly by Baileys, so this is the closest safe hook.
+    if (PROTOCOL_TAP_ENABLED && instance.protocolTap) {
+      const processFn = (socket.ev as any)?.process as ((cb: (events: any) => Promise<void> | void) => void) | undefined;
+      if (typeof processFn === 'function') {
+        processFn(async (events) => {
+        try {
+          for (const [eventType, eventData] of Object.entries(events)) {
+            instance.protocolTap!.record('in', { nodeTag: eventType, payload: eventData });
+          }
+        } catch {
+          // never break the socket event loop
+        }
+        });
+      }
+    }
+
+    const toFiniteNumberOrNull = (value: unknown): number | null => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string' && value.trim() !== '') {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+      return null;
+    };
+
+    const mapChatForDb = (chatLike: any): {
+      jid: string;
+      name?: string | null;
+      isGroup: boolean;
+      unreadCount?: number | null;
+      lastMessageTime?: number | null;
+      archived?: boolean | null;
+      muted?: boolean | null;
+    } | null => {
+      const jid = chatLike?.id || chatLike?.jid;
+      if (!jid || typeof jid !== 'string') return null;
+
+      const unreadCount = toFiniteNumberOrNull(chatLike?.unreadCount);
+      const lastMessageTime = toFiniteNumberOrNull(chatLike?.conversationTimestamp);
+
+      return {
+        jid,
+        name: typeof chatLike?.name === 'string' ? chatLike.name : null,
+        isGroup: jid.endsWith('@g.us'),
+        unreadCount,
+        lastMessageTime,
+        archived: typeof chatLike?.archived === 'boolean' ? chatLike.archived : null,
+        muted: chatLike?.muteEndTime ? true : null,
+      };
+    };
+
+    // Chat history + chat list hydration (History Sync)
+    // This event is the main source of initial chat list population.
+    socket.ev.on('messaging-history.set', async ({ chats, contacts, messages, isLatest, syncType, progress }) => {
       try {
-        for (const chat of chats || []) {
+        const chatList = chats || [];
+
+        for (const chat of chatList) {
           if (chat?.id) instance.chatIndex.set(chat.id, chat);
         }
-        logger.info({ deviceId, count: chats?.length || 0 }, 'Chat history set received');
+
+        // Persist to DB as source of truth
+        const dbChats = chatList.map(mapChatForDb).filter(Boolean) as any;
+        this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
+        this.chatRepo.markHistorySync(tenantId, deviceId, dbChats.length);
+
+        logger.info(
+          {
+            deviceId,
+            chatsCount: chatList.length,
+            contactsCount: contacts?.length || 0,
+            messagesCount: messages?.length || 0,
+            isLatest,
+            syncType,
+            progress,
+          },
+          'History sync received (messaging-history.set)'
+        );
       } catch (error) {
-        logger.error({ error, deviceId }, 'Failed to process messaging-history.set');
+        logger.error(
+          {
+            deviceId,
+            error,
+            errorCode: (error as any)?.code,
+            errorMessage: (error as any)?.message,
+          },
+          'Failed to process messaging-history.set'
+        );
       }
     });
 
     socket.ev.on('chats.upsert', async (chats) => {
       try {
-        for (const chat of chats || []) {
+        const chatList = chats || [];
+
+        for (const chat of chatList) {
           if (chat?.id) instance.chatIndex.set(chat.id, chat);
         }
+
+        const dbChats = chatList.map(mapChatForDb).filter(Boolean) as any;
+        this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
+        this.chatRepo.markChatsEvent(tenantId, deviceId, 'upsert');
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.upsert');
       }
@@ -499,16 +617,41 @@ export class DeviceManager {
         const { eventRepository } = await import('../modules/events/repository');
         const { webhookService } = await import('../modules/webhooks/service');
 
+        const inferInboxType = (message: any): string => {
+          if (!message) return 'text';
+          if (message.conversation || message.extendedTextMessage?.text) return 'text';
+          if (message.imageMessage) return 'image';
+          if (message.videoMessage) return 'video';
+          if (message.audioMessage) return 'audio';
+          if (message.documentMessage) return 'document';
+          if (message.stickerMessage) return 'sticker';
+          if (message.locationMessage || message.liveLocationMessage) return 'location';
+          if (message.contactMessage || message.contactsArrayMessage) return 'contact';
+          if (message.reactionMessage) return 'reaction';
+          if (message.pollCreationMessage || message.pollUpdateMessage) return 'poll';
+          return 'text';
+        };
+
         for (const msg of m.messages) {
           if (msg.message && msg.key.fromMe === false) {
             // Save to event log and inbox
-            const jid = msg.key.remoteJid || 'unknown';
+            const remoteJidRaw = msg.key.remoteJid || 'unknown';
+            const senderPn = (msg.key as any)?.senderPn as string | undefined;
+            const jid = remoteJidRaw.endsWith('@lid') && senderPn ? senderPn : remoteJidRaw;
             const messageId = msg.key.id || 'unknown';
 
-            eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messages.upsert', {
+            // Keep payload small & consistent with Baileys example patterns
+            const inboxPayload = {
               key: msg.key,
               message: msg.message,
               pushName: msg.pushName,
+              messageTimestamp: msg.messageTimestamp,
+            };
+
+            eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messages.upsert', {
+              ...inboxPayload,
+              remoteJidRaw,
+              normalizedJid: jid,
             });
 
             eventRepository.saveInboxMessage(
@@ -516,8 +659,8 @@ export class DeviceManager {
               deviceId,
               jid,
               messageId,
-              msg.message.conversation ? 'text' : 'media',
-              msg
+              inferInboxType(msg.message),
+              inboxPayload
             );
 
             // Trigger webhooks
@@ -656,7 +799,9 @@ export class DeviceManager {
       try {
         const { eventRepository } = await import('../modules/events/repository');
 
-        for (const update of updates) {
+        const updateList = updates || [];
+
+        for (const update of updateList) {
           eventRepository.saveEvent(instance.state.tenantId, deviceId, 'chats.update', update);
 
           const jid = (update as any)?.id;
@@ -665,8 +810,32 @@ export class DeviceManager {
             instance.chatIndex.set(jid, { ...existing, ...update });
           }
         }
+
+        const dbChats = updateList.map(mapChatForDb).filter(Boolean) as any;
+        this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
+        this.chatRepo.markChatsEvent(tenantId, deviceId, 'update');
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.update');
+      }
+    });
+
+    // Chat deletions
+    socket.ev.on('chats.delete', async (deletions: any) => {
+      try {
+        const list = Array.isArray(deletions) ? deletions : [];
+        const jids = list
+          .map((d: any) => (typeof d === 'string' ? d : d?.id || d?.jid))
+          .filter(Boolean) as string[];
+        if (!jids.length) return;
+
+        for (const jid of jids) {
+          instance.chatIndex.delete(jid);
+        }
+
+        this.chatRepo.deleteMany(deviceId, jids);
+        this.chatRepo.markChatsEvent(tenantId, deviceId, 'delete');
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process chats.delete');
       }
     });
   }
@@ -844,6 +1013,7 @@ interface DeviceInstance {
   startedAt: number;
   lockRefreshInterval?: NodeJS.Timeout;
   chatIndex: Map<string, any>;
+  protocolTap?: ProtocolTapBuffer;
 }
 
 // Export singleton instance

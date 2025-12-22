@@ -167,6 +167,13 @@ export class MessageService {
       const socket = this.getSocket(deviceId);
       const payload = JSON.parse(message.payload) as SendTextMessageRequest;
 
+      deviceManager.recordProtocolOut(deviceId, 'sendMessage', {
+        jid: message.jid,
+        type: 'text',
+        hasMentions: Boolean(payload.mentions?.length),
+        hasQuoted: Boolean(payload.quotedMessageId),
+      });
+
       const sentMsg = await socket.sendMessage(message.jid, {
         text: payload.text,
         mentions: payload.mentions,
@@ -244,6 +251,14 @@ export class MessageService {
     try {
       const socket = this.getSocket(deviceId);
       const payload = JSON.parse(message.payload) as SendMediaMessageRequest;
+
+      deviceManager.recordProtocolOut(deviceId, 'sendMessage', {
+        jid: message.jid,
+        type: mediaType,
+        hasCaption: Boolean(payload.caption),
+        hasUrl: Boolean(payload.mediaUrl),
+        mimeType: payload.mimeType,
+      });
 
       let mediaBuffer: Buffer;
 
@@ -347,6 +362,11 @@ export class MessageService {
       const socket = this.getSocket(deviceId);
       const payload = JSON.parse(message.payload) as SendLocationMessageRequest;
 
+      deviceManager.recordProtocolOut(deviceId, 'sendMessage', {
+        jid: message.jid,
+        type: 'location',
+      });
+
       const sentMsg = await socket.sendMessage(message.jid, {
         location: {
           degreesLatitude: payload.latitude,
@@ -402,6 +422,12 @@ export class MessageService {
       const socket = this.getSocket(deviceId);
       const payload = JSON.parse(message.payload) as SendContactMessageRequest;
 
+      deviceManager.recordProtocolOut(deviceId, 'sendMessage', {
+        jid: message.jid,
+        type: 'contact',
+        contactsCount: payload.contacts?.length || 0,
+      });
+
       const sentMsg = await socket.sendMessage(message.jid, {
         contacts: {
           displayName: payload.contacts[0]?.displayName || 'Contact',
@@ -428,6 +454,12 @@ export class MessageService {
     const jid = this.normalizeJid(request.to);
 
     try {
+      deviceManager.recordProtocolOut(deviceId, 'sendMessage', {
+        jid,
+        type: 'reaction',
+        emoji: request.emoji,
+      });
+
       await socket.sendMessage(jid, {
         react: {
           text: request.emoji,
@@ -454,6 +486,12 @@ export class MessageService {
     const jid = this.normalizeJid(request.to);
 
     try {
+      deviceManager.recordProtocolOut(deviceId, 'deleteMessage', {
+        jid,
+        messageId: request.messageId,
+        forEveryone: Boolean(request.forEveryone),
+      });
+
       await socket.sendMessage(jid, { delete: { id: request.messageId, remoteJid: jid } });
       return { success: true };
     } catch (error) {

@@ -204,6 +204,51 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_device_sessions_updated_at ON device_sessions(updated_at);
     `,
   },
+  {
+    version: 3,
+    name: 'chats_db_backed_history_sync',
+    up: `
+      -- Chats (DB-backed) - source of truth for List Chats
+      CREATE TABLE IF NOT EXISTS chats (
+        device_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        jid TEXT NOT NULL,
+        name TEXT,
+        is_group INTEGER NOT NULL DEFAULT 0,
+        unread_count INTEGER NOT NULL DEFAULT 0,
+        last_message_time INTEGER,
+        archived INTEGER NOT NULL DEFAULT 0,
+        muted INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        PRIMARY KEY (device_id, jid),
+        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_chats_device_id ON chats(device_id);
+      CREATE INDEX IF NOT EXISTS idx_chats_tenant_id ON chats(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_chats_device_last_message_time ON chats(device_id, last_message_time);
+      CREATE INDEX IF NOT EXISTS idx_chats_device_updated_at ON chats(device_id, updated_at);
+
+      -- Per-device sync/debug state for chat history sync
+      CREATE TABLE IF NOT EXISTS device_chat_sync (
+        device_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        last_history_sync_at INTEGER,
+        last_history_sync_chats_count INTEGER,
+        last_chats_upsert_at INTEGER,
+        last_chats_update_at INTEGER,
+        last_chats_delete_at INTEGER,
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_device_chat_sync_tenant_id ON device_chat_sync(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_device_chat_sync_updated_at ON device_chat_sync(updated_at);
+    `,
+  },
 ];
 
 export function runMigrations(): void {

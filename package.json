@@ -12,9 +12,7 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage",
-    "test:local": "node scripts/local-test/run-local-tests.mjs",
-    "test:local:only": "node scripts/local-test/local-tests.mjs --skip-server=true"
+    "coverage": "vitest run --coverage"
   },
   "keywords": [
     "whatsapp",

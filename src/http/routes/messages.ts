@@ -562,19 +562,34 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
           },
           required: ['deviceId'],
         },
+        querystring: {
+          type: 'object',
+          properties: {
+            limit: { type: 'number', minimum: 1, maximum: 200, default: 50 },
+            offset: { type: 'number', minimum: 0, default: 0 },
+          },
+        },
         response: {
           200: {
             type: 'object',
             properties: {
+              synced: { type: 'boolean' },
+              lastHistorySyncAt: { type: ['number', 'null'] },
+              count: { type: 'number' },
+              limit: { type: 'number' },
+              offset: { type: 'number' },
               chats: {
                 type: 'array',
                 items: {
                   type: 'object',
                   properties: {
-                    id: { type: 'string' },
+                    jid: { type: 'string' },
                     name: { type: 'string' },
+                    isGroup: { type: 'boolean' },
                     unreadCount: { type: 'number' },
-                    conversationTimestamp: { type: 'number' },
+                    lastMessageTime: { type: 'number' },
+                    archived: { type: 'boolean' },
+                    muted: { type: 'boolean' },
                   },
                 },
               },
@@ -585,10 +600,18 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, _reply) => {
       const { deviceId } = request.params;
+      const { limit = 50, offset = 0 } = request.query as { limit?: number; offset?: number };
 
       try {
-        const chats = await chatService.getChats(deviceId);
-        return _reply.send({ chats });
+        const result = await chatService.getChats(deviceId, limit, offset);
+        return _reply.send({
+          synced: result.synced,
+          lastHistorySyncAt: result.lastHistorySyncAt ?? null,
+          count: result.count,
+          limit,
+          offset,
+          chats: result.chats,
+        });
       } catch (error: any) {
         request.log.error(error, 'Failed to get chats');
         throw INTERNAL_SERVER_ERROR(error.message || 'Failed to get chats');
@@ -633,16 +656,16 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
                 items: {
                   type: 'object',
                   properties: {
-                    key: {
-                      type: 'object',
-                      properties: {
-                        id: { type: 'string' },
-                        remoteJid: { type: 'string' },
-                        fromMe: { type: 'boolean' },
-                      },
-                    },
-                    message: { type: 'object' },
-                    messageTimestamp: { type: 'number' },
+                    id: { type: 'string', description: 'Internal inbox row ID' },
+                    waMessageId: { type: 'string', description: 'WhatsApp message ID' },
+                    from: { type: 'string' },
+                    to: { type: 'string' },
+                    type: { type: 'string' },
+                    text: { type: 'string' },
+                    caption: { type: 'string' },
+                    mediaUrl: { type: 'string' },
+                    timestamp: { type: 'number' },
+                    fromMe: { type: 'boolean' },
                   },
                 },
               },
