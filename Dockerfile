@@ -38,8 +38,9 @@ RUN npm ci --only=production && \
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
-# Create data directory
-RUN mkdir -p /app/data && chown nodejs:nodejs /app/data
+# Create mount points for volumes (must be writable by non-root user)
+RUN mkdir -p /app/data /app/sessions /app/logs && \
+  chown -R nodejs:nodejs /app/data /app/sessions /app/logs
 
 # Switch to non-root user
 USER nodejs

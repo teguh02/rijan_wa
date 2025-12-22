@@ -13,9 +13,6 @@ build/
 .env.local
 .env.*.local
 
-# Sessions
-sessions/
-
 # Database
 *.db
 *.db-shm
@@ -47,6 +44,3 @@ Thumbs.db
 
 # Testing
 coverage/
-
-# Docker
-.dockerignore

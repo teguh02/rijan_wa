@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.6] - 2025-12-22
+
+### 🐳 Docker
+
+- ✅ Fixed container crash on startup caused by log volume permissions (`EACCES: permission denied, open '/app/logs/YYYY-MM-DD.log'`)
+  - Image now creates and sets ownership for `/app/data`, `/app/sessions`, and `/app/logs` before switching to non-root user
+- ✅ Published Docker image to Docker Hub:
+  - `teguh02/rijan_wa:1.3.6`
+  - `teguh02/rijan_wa:latest`
+- ✅ Docker Compose now defaults to pulling the published image (no local build required)
+
 ## [1.3.5] - 2025-12-22
 
 ### 🐛 Fixes (Reactions)

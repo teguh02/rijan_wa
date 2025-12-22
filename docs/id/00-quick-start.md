@@ -90,7 +90,9 @@ curl -X POST http://localhost:3000/admin/tenants \
   -d '{
     "name": "Perusahaan Saya"
   }'
-```Langkah 2: Buat Device (Admin)
+```
+
+### Langkah 2: Buat Device (Admin)
 
 **Device** = Nomor WhatsApp yang akan mengirim pesan (bisa multiple nomor).
 
@@ -110,11 +112,13 @@ curl -X POST http://localhost:3000/admin/tenants/TENANT_ID/devices \
 {
   "success": true,
   "data": {
-    "device_id": "device_xyz789abc123",
-    "tenant_id": "tenant_abc123xyz789",
-    "label": "Customer Service",
-    "status": "disconnected",
-    "created_at": 1703145600
+    "device": {
+      "id": "device_xyz789abc123",
+      "tenant_id": "tenant_abc123xyz789",
+      "label": "Customer Service",
+      "status": "disconnected",
+      "created_at": 1703145600
+    }
   }
 }
 ```
@@ -125,7 +129,7 @@ curl -X POST http://localhost:3000/admin/tenants/TENANT_ID/devices \
 | `label` | Nama/label device | Identifikasi device |
 | `status` | Status koneksi | `disconnected` (belum connect) |
 
-**⭐ SIMPAN**: Copy `device_id` - kita butuh langkah berikutnya!
+**⭐ SIMPAN**: Copy `device.id` - kita butuh langkah berikutnya!
 
 ### Langkah 3: Start Device (Tenant)
 
@@ -141,10 +145,10 @@ curl -X POST http://localhost:3000/v1/devices/DEVICE_ID/start \
 {
   "success": true,
   "data": {
-    "device_id": "device_xyz789abc123",
-    "status": "connecting",
-    "message": "Device sudah dimulai"
-  }
+    "message": "Device started",
+    "status": "connecting"
+  },
+  "requestId": "req_abc123"
 }
 ```
 
@@ -162,7 +166,23 @@ curl -X POST http://localhost:3000/v1/devices/DEVICE_ID/pairing/qr \
 {
   "success": true,
   "data": {
-    Langkah 6 (Bonus): Kirim Pesan (Tenant)
+    "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...",
+    "expires_at": 1703145660000,
+    "message": "Scan the QR code with WhatsApp on your smartphone"
+  },
+  "requestId": "req_def456"
+}
+```
+
+### Langkah 5: Scan QR Code
+
+1. Buka WhatsApp di HP
+2. Masuk ke menu **Linked devices / Perangkat tertaut**
+3. Scan QR code dari response di atas
+
+Jika pairing berhasil, status device akan menjadi **connected**.
+
+### Langkah 6 (Bonus): Kirim Pesan (Tenant)
 
 Setelah device **CONNECTED**, kita bisa kirim pesan:
 
@@ -184,16 +204,14 @@ curl -X POST http://localhost:3000/v1/devices/DEVICE_ID/messages/text \
 **Response**:
 ```json
 {
-  "success": true,
-  "data": {
-    "message_id": "msg_abc123xyz789",
-    "status": "pending",
-    "to": "628123456789@s.whatsapp.net",
-    "timestamp": 1703145600
-  }
+  "id": "msg_abc123xyz789",
+  "messageId": "msg_abc123xyz789",
+  "status": "pending",
+  "timestamp": 1703145600
 }
 ```
-Langkah Berikutnya
+
+## ⏭️ Langkah Berikutnya
 
 ### Pelajari Lebih Lanjut
 
