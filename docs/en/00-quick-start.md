@@ -15,13 +15,31 @@ npm install
 
 ### Step 2: Generate a Master Key (Admin key)
 
-Generate a 32-byte random value in Windows PowerShell:
+This gateway uses the following model:
+
+- `.env` stores `MASTER_KEY` as a **SHA256 hex hash** (64 chars)
+- Admin requests must send the **plain master password** in the `X-Master-Key` header
+
+#### Option A (Linux/macOS): generate master password + hash
+
+```bash
+MASTER_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)"
+echo "MASTER PASSWORD: $MASTER_PASSWORD"
+echo -n "$MASTER_PASSWORD" | sha256sum
+```
+
+#### Option B (Windows PowerShell): generate master password + hash
 
 ```powershell
-$bytes = New-Object byte[] 32
-[System.Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($bytes)
-$masterKey = [System.BitConverter]::ToString($bytes) -replace '-'
-Write-Output $masterKey
+$len = 16
+$chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+$bytes = New-Object byte[] $len
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$masterPassword = -join ($bytes | ForEach-Object { $chars[ $_ % $chars.Length ] })
+$masterKeyHash = (New-Object -TypeName System.Security.Cryptography.SHA256Managed).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($masterPassword))
+$masterKeyHex = ([System.BitConverter]::ToString($masterKeyHash) -replace '-', '').ToLower()
+Write-Output ("MASTER PASSWORD: {0}" -f $masterPassword)
+Write-Output ("MASTER_KEY (SHA256): {0}" -f $masterKeyHex)
 ```
 
 Keep this key safe.
@@ -33,8 +51,8 @@ Create a `.env` file at the repository root:
 ```env
 NODE_ENV=development
 PORT=3000
-MASTER_KEY=YOUR_GENERATED_MASTER_KEY_HERE
-DATABASE_URL=data/app.db
+MASTER_KEY=YOUR_GENERATED_MASTER_KEY_SHA256_HEX
+DATABASE_PATH=data/rijan_wa.db
 LOG_LEVEL=info
 TIMEZONE=Asia/Jakarta
 ```
@@ -57,7 +75,7 @@ INFO: Server listening at http://localhost:3000
 
 ```bash
 curl -X POST http://localhost:3000/admin/tenants \
-  -H "X-Master-Key: YOUR_MASTER_KEY" \
+  -H "X-Master-Key: YOUR_MASTER_PASSWORD" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My Company"
@@ -70,7 +88,7 @@ Replace `TENANT_ID` with the tenant id from step 1:
 
 ```bash
 curl -X POST http://localhost:3000/admin/tenants/TENANT_ID/devices \
-  -H "X-Master-Key: YOUR_MASTER_KEY" \
+  -H "X-Master-Key: YOUR_MASTER_PASSWORD" \
   -H "Content-Type: application/json" \
   -d '{
     "label": "Customer Service"

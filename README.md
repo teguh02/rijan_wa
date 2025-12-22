@@ -2,6 +2,18 @@
 
 WhatsApp Gateway built on Baileys with multi-tenant + multi-device support.
 
+## Quick Install (Linux)
+
+Download and run the installer script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teguh02/rijan_wa/refs/heads/main/scripts/installation/linux.sh -o rijan_wa-install.sh
+chmod +x rijan_wa-install.sh
+./rijan_wa-install.sh
+```
+
+It will install Docker/Compose if needed, pull the image, generate `.env` (including a random master password + `MASTER_KEY` hash), and start the service.
+
 ## Quick Start (local)
 
 ### 1) Install

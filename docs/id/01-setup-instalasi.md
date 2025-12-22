@@ -2,6 +2,48 @@
 
 Panduan lengkap untuk menginstall dan setup Rijan WA Gateway.
 
+## ⚡ Instalasi Cepat (Linux) — Recommended
+
+Jika kamu ingin instalasi paling cepat (tanpa perlu install Node.js), gunakan skrip installer Linux. Skrip ini akan:
+
+- Mengecek apakah Docker + Docker Compose v2 sudah ter-install (kalau belum: install otomatis via repo resmi)
+- Pull image `teguh02/rijan_wa` dari Docker Hub
+- Membuat file `.env` baru otomatis
+  - Generate **MASTER PASSWORD** acak (12–20 karakter)
+  - Set `MASTER_KEY` sebagai **SHA256 hash (64 hex)** dari master password
+- Membuat `docker-compose.yml` minimal (jika belum ada)
+- Menjalankan service sampai container up (best-effort menunggu healthcheck)
+
+Download & jalankan:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teguh02/rijan_wa/refs/heads/main/scripts/installation/linux.sh -o rijan_wa-install.sh
+chmod +x rijan_wa-install.sh
+./rijan_wa-install.sh
+```
+
+Opsi (opsional):
+
+```bash
+# contoh: install ke /opt/rijan_wa dan pakai tag image tertentu
+RIJAN_WA_INSTALL_DIR=/opt/rijan_wa \
+RIJAN_WA_IMAGE_TAG=1.3.6 \
+RIJAN_WA_HOST_PORT=3000 \
+RIJAN_WA_MASTER_PASSWORD_LEN=16 \
+./rijan_wa-install.sh
+```
+
+Catatan penting:
+
+- Skrip akan menampilkan **MASTER PASSWORD (plain text)** di output. Simpan baik-baik.
+- Untuk request admin, header yang dipakai adalah **plain password**, bukan hash:
+
+```text
+X-Master-Key: <MASTER PASSWORD>
+```
+
+- Secara default port host `3000` dipublish ke `0.0.0.0` (tidak hanya localhost), sehingga siap dipakai reverse proxy.
+
 ## 📋 Prerequisites
 
 ### System Requirements
@@ -58,8 +100,13 @@ copy .env.example .env
 Buka file `.env` dengan text editor dan sesuaikan konfigurasi:
 
 ```env
-# Security - MASTER_KEY adalah SHA256 hash dari master password
-# Contoh: echo -n "your-super-secret-password" | sha256sum
+# Security
+# MASTER_KEY adalah SHA256 hash (64 hex) dari master password.
+# Kamu akan mengirim master password (plain text) di header: X-Master-Key
+# Contoh generate:
+#   MASTER_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)"
+#   echo "MASTER PASSWORD: $MASTER_PASSWORD"
+#   echo -n "$MASTER_PASSWORD" | sha256sum
 MASTER_KEY=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
 # Server

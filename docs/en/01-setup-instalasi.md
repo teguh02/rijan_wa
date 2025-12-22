@@ -2,6 +2,42 @@
 
 This document covers installation and first-time setup for Rijan WA Gateway.
 
+## Fast Install (Linux) — Recommended
+
+If you want the quickest setup (without installing Node.js), use the Linux installer script. It will:
+
+- Detect and install Docker Engine + Docker Compose v2 (official repo) if needed
+- Pull the Docker image `teguh02/rijan_wa` from Docker Hub
+- Generate a fresh `.env` automatically
+  - Create a random **master password** (12–20 characters)
+  - Set `MASTER_KEY` to the **SHA256 hex hash (64 chars)** of that password
+- Create a minimal `docker-compose.yml` (if missing)
+- Start the service via `docker compose`
+
+Download & run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teguh02/rijan_wa/refs/heads/main/scripts/installation/linux.sh -o rijan_wa-install.sh
+chmod +x rijan_wa-install.sh
+./rijan_wa-install.sh
+```
+
+Optional overrides:
+
+```bash
+RIJAN_WA_INSTALL_DIR=/opt/rijan_wa \
+RIJAN_WA_IMAGE_TAG=1.3.6 \
+RIJAN_WA_HOST_PORT=3000 \
+RIJAN_WA_MASTER_PASSWORD_LEN=16 \
+./rijan_wa-install.sh
+```
+
+Important notes:
+
+- The script prints the **MASTER PASSWORD (plain text)**. Save it.
+- For admin requests, you must send the plain password in the `X-Master-Key` header (not the hash).
+- By default it publishes port `3000` on all interfaces (ready for a reverse proxy).
+
 ## Prerequisites
 
 - Node.js: >= 18
@@ -40,7 +76,9 @@ Copy-Item .env.example .env
 Edit `.env` (example):
 
 ```env
-# Security - MASTER_KEY is a SHA256 hash of your master password
+# Security
+# MASTER_KEY is the SHA256 hash (64 hex chars) of your master password.
+# You must send the *plain* master password in the X-Master-Key header.
 MASTER_KEY=<sha256_hash>
 
 # Server

@@ -20,14 +20,31 @@ npm install
 
 ### Langkah 2: Generate Master Key (Kunci Admin)
 
-Master key adalah kunci rahasia yang digunakan admin untuk membuat tenant dan device. Jalankan di PowerShell:
+Gateway menggunakan model berikut:
+
+- Kamu menyimpan `MASTER_KEY` di `.env` sebagai **SHA256 hash** (64 hex)
+- Saat memanggil endpoint admin, kamu mengirim **master password (plain text)** di header `X-Master-Key`
+
+#### Opsi A (Linux/macOS): generate master password + hash
+
+```bash
+MASTER_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 16)"
+echo "MASTER PASSWORD: $MASTER_PASSWORD"
+echo -n "$MASTER_PASSWORD" | sha256sum
+```
+
+#### Opsi B (Windows PowerShell): generate master password + hash
 
 ```powershell
-# Windows PowerShell
-$bytes = New-Object byte[] 32
-[System.Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($bytes)
-$masterKey = [System.BitConverter]::ToString($bytes) -replace '-'
-Write-Output $masterKey
+$len = 16
+$chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+$bytes = New-Object byte[] $len
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$masterPassword = -join ($bytes | ForEach-Object { $chars[ $_ % $chars.Length ] })
+$masterKeyHash = (New-Object -TypeName System.Security.Cryptography.SHA256Managed).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($masterPassword))
+$masterKeyHex = ([System.BitConverter]::ToString($masterKeyHash) -replace '-', '').ToLower()
+Write-Output ("MASTER PASSWORD: {0}" -f $masterPassword)
+Write-Output ("MASTER_KEY (SHA256): {0}" -f $masterKeyHex)
 ```
 
 **Contoh output**:
@@ -49,8 +66,8 @@ Buat file bernama `.env` di folder root `rijan_wa`:
 ```env
 NODE_ENV=development
 PORT=3000
-MASTER_KEY=YOUR_GENERATED_MASTER_KEY_HERE
-DATABASE_URL=data/app.db
+MASTER_KEY=YOUR_GENERATED_MASTER_KEY_SHA256_HEX
+DATABASE_PATH=data/rijan_wa.db
 LOG_LEVEL=info
 TIMEZONE=Asia/Jakarta
 ```
@@ -60,7 +77,7 @@ TIMEZONE=Asia/Jakarta
 | `NODE_ENV` | Mode environment | `development` atau `production` |
 | `PORT` | Port server berjalan | Default `3000` |
 | `MASTER_KEY` | Kunci admin (dari langkah 2) | Key yang sudah di-generate |
-| `DATABASE_URL` | Lokasi database SQLite | `data/app.db` |
+| `DATABASE_PATH` | Lokasi database SQLite | `data/rijan_wa.db` |
 | `LOG_LEVEL` | Level log yang ditampilkan | `debug`, `info`, `warn`, `error` |
 | `TIMEZONE` | Zona waktu server | `Asia/Jakarta`, `Asia/Bangkok`, dll |
 
@@ -85,7 +102,7 @@ Server sudah ready! 🎉
 
 ```bash
 curl -X POST http://localhost:3000/admin/tenants \
-  -H "X-Master-Key: YOUR_MASTER_KEY" \
+  -H "X-Master-Key: YOUR_MASTER_PASSWORD" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Perusahaan Saya"
@@ -100,7 +117,7 @@ Ganti `TENANT_ID` dengan `tenant_id` dari langkah 1:
 
 ```bash
 curl -X POST http://localhost:3000/admin/tenants/TENANT_ID/devices \
-  -H "X-Master-Key: YOUR_MASTER_KEY" \
+  -H "X-Master-Key: YOUR_MASTER_PASSWORD" \
   -H "Content-Type: application/json" \
   -d '{
     "label": "Customer Service"
@@ -357,7 +374,7 @@ Buat `.env.example`:
 NODE_ENV=development
 PORT=3000
 LOG_LEVEL=debug
-DATABASE_URL=data/app.db
+DATABASE_PATH=data/rijan_wa.db
 
 # Admin
 MASTER_KEY=abc123...
@@ -465,7 +482,7 @@ Tenant Endpoints (pakai Authorization: Bearer):
 
 **Admin Request**:
 ```bash
--H "X-Master-Key: YOUR_MASTER_KEY"
+-H "X-Master-Key: YOUR_MASTER_PASSWORD"
 -H "Content-Type: application/json"
 ```
 
