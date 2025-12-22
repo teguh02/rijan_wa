@@ -14,6 +14,15 @@ chmod +x rijan_wa-install.sh
 
 It will install Docker/Compose if needed, pull the image, generate `.env` (including a random master password + `MASTER_KEY` hash), and start the service.
 
+## Quick Install (Windows)
+
+Download and run the PowerShell installer (Docker Desktop must already be installed):
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/teguh02/rijan_wa/refs/heads/main/scripts/installation/windows.ps1 -OutFile rijan_wa-install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\rijan_wa-install.ps1
+```
+
 ## Quick Start (local)
 
 ### 1) Install

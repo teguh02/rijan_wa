@@ -69,7 +69,7 @@ function Write-EnvFile([string]$InstallDir, [int]$MasterPasswordLen) {
   $envPath = Join-Path $InstallDir '.env'
 
   if (Test-Path $envPath) {
-    Warn ".env already exists at $envPath — backing up to .env.bak"
+    Warn ".env already exists at $envPath - backing up to .env.bak"
     Copy-Item -Force $envPath (Join-Path $InstallDir '.env.bak')
   }
 
@@ -113,11 +113,12 @@ function Write-ComposeFile([string]$InstallDir, [string]$ImageRepo, [string]$Ima
   $composePath = Join-Path $InstallDir 'docker-compose.yml'
 
   if (Test-Path $composePath) {
-    Info "docker-compose.yml already exists: $composePath"
-    return $composePath
+    $backupPath = "$composePath.bak.$(Get-Date -Format 'yyyyMMddHHmmss')"
+    Warn "docker-compose.yml already exists; backing up to: $backupPath"
+    Copy-Item -Force $composePath $backupPath
   }
 
-  Info 'Creating docker-compose.yml…'
+  Info 'Writing docker-compose.yml (env_file-driven)...'
   $compose = @(
     'services:',
     '  rijan_wa:',
@@ -125,7 +126,7 @@ function Write-ComposeFile([string]$InstallDir, [string]$ImageRepo, [string]$Ima
     '    container_name: rijan_wa',
     '    restart: unless-stopped',
     '    ports:',
-    "      - \"$HostPort`:3000\"",
+    "      - ""${HostPort}:3000""",
     '    env_file:',
     '      - .env',
     '    volumes:',
@@ -169,6 +170,13 @@ function Wait-ForHealthy([string]$ContainerName, [int]$TimeoutSec) {
   }
 }
 
+function Invoke-Docker([scriptblock]$Block, [string]$ErrorMessage) {
+  & $Block
+  if ($LASTEXITCODE -ne 0) {
+    Fail "$ErrorMessage (exit code: $LASTEXITCODE)"
+  }
+}
+
 # -------- Main --------
 
 $ImageRepo = if ($env:RIJAN_WA_IMAGE_REPO) { $env:RIJAN_WA_IMAGE_REPO } else { 'teguh02/rijan_wa' }
@@ -203,23 +211,9 @@ Ensure-DockerPresent
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
-Info 'Pulling image…'
-docker pull "$ImageRepo`:$ImageTag" | Out-Null
-
-Info 'Generating new .env (MASTER_KEY)…'
+# Generate and print credentials FIRST (before any Docker pull/run)
+Info 'Generating new .env (MASTER_KEY)...'
 $envResult = Write-EnvFile -InstallDir $InstallDir -MasterPasswordLen $MasterLen
-
-$composePath = Write-ComposeFile -InstallDir $InstallDir -ImageRepo $ImageRepo -ImageTag $ImageTag -HostPort $HostPort
-
-Info 'Starting rijan_wa via docker compose…'
-Push-Location $InstallDir
-try {
-  docker compose up -d | Out-Null
-} finally {
-  Pop-Location
-}
-
-[void](Wait-ForHealthy -ContainerName 'rijan_wa' -TimeoutSec 120)
 
 Write-Host ''
 Write-Host '================= IMPORTANT OUTPUT ================='
@@ -235,6 +229,21 @@ Write-Host ("  X-Master-Key: {0}" -f $envResult.MasterPassword)
 Write-Host '===================================================='
 Write-Host ''
 
+Info 'Pulling image...'
+Invoke-Docker { docker pull "$ImageRepo`:$ImageTag" | Out-Null } 'Failed to pull Docker image'
+
+$composePath = Write-ComposeFile -InstallDir $InstallDir -ImageRepo $ImageRepo -ImageTag $ImageTag -HostPort $HostPort
+
+Info 'Starting rijan_wa via docker compose...'
+Push-Location $InstallDir
+try {
+  Invoke-Docker { docker compose up -d | Out-Null } 'Failed to start via docker compose'
+} finally {
+  Pop-Location
+}
+
+[void](Wait-ForHealthy -ContainerName 'rijan_wa' -TimeoutSec 120)
+
 Info 'Manage service:'
 Write-Host ("  cd `"{0}`"" -f $InstallDir)
 Write-Host '  docker compose ps'
@@ -245,3 +254,5 @@ Write-Host ''
 
 Info 'Health check:'
 Write-Host ("  Invoke-WebRequest http://localhost:{0}/health | Select-Object -ExpandProperty Content" -f $HostPort)
+
+exit 0

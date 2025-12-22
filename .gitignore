@@ -10,6 +10,12 @@ build/
 
 # Environment
 .env
+.env.production
+.env.development
+.env.staging
+.env.bak
+.env.backup
+.env.test
 .env.local
 .env.*.local
 

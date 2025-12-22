@@ -200,30 +200,32 @@ write_compose_file() {
 	compose_path="$install_dir/docker-compose.yml"
 
 	if [[ -f "$compose_path" ]]; then
-		info "docker-compose.yml already exists: $compose_path"
-		return
+		local backup_path
+		backup_path="$compose_path.bak.$(date +%Y%m%d%H%M%S)"
+		warn "docker-compose.yml already exists; backing up to: $backup_path"
+		cp "$compose_path" "$backup_path"
 	fi
 
-	info "Creating docker-compose.yml…"
+	info "Writing docker-compose.yml (env_file-driven)…"
 	cat >"$compose_path" <<EOF
 services:
-	rijan_wa:
-		image: ${image_repo}:${image_tag}
-		container_name: rijan_wa
-		restart: unless-stopped
-		ports:
-			- "${host_port}:3000"
-		env_file:
-			- .env
-		volumes:
-			- rijan_wa_data:/app/data
-			- rijan_wa_sessions:/app/sessions
-			- rijan_wa_logs:/app/logs
+  rijan_wa:
+    image: ${image_repo}:${image_tag}
+    container_name: rijan_wa
+    restart: unless-stopped
+    ports:
+      - "${host_port}:3000"
+    env_file:
+      - .env
+    volumes:
+      - rijan_wa_data:/app/data
+      - rijan_wa_sessions:/app/sessions
+      - rijan_wa_logs:/app/logs
 
 volumes:
-	rijan_wa_data:
-	rijan_wa_sessions:
-	rijan_wa_logs:
+  rijan_wa_data:
+  rijan_wa_sessions:
+  rijan_wa_logs:
 EOF
 }
 
@@ -297,16 +299,7 @@ main() {
 	info "Image: ${image_repo}:${image_tag}"
 	info "Host port: ${host_port} -> container 3000"
 
-	ensure_docker_installed
-	init_docker_access
-	ensure_compose_v2
-
-	info "Docker version: $(docker_exec version --format '{{.Server.Version}}' 2>/dev/null || docker_exec version | head -n 5 | tr -d '\r')"
-	info "Compose version: $(docker_exec compose version 2>/dev/null | tr -d '\r')"
-
-	info "Pulling image…"
-	docker_exec pull "${image_repo}:${image_tag}"
-
+	# Generate and print credentials FIRST (before any Docker pull/run)
 	info "Generating new .env (MASTER_KEY) …"
 	mkdir -p "$install_dir"
 
@@ -347,14 +340,6 @@ RATE_LIMIT_WINDOW=60000
 ENCRYPTION_ALGORITHM=aes-256-gcm
 EOF
 
-	write_compose_file "$install_dir" "$image_repo" "$image_tag" "$host_port"
-
-	info "Starting rijan_wa via docker compose…"
-	(cd "$install_dir" && docker_exec compose up -d)
-
-	wait_for_container_healthy "rijan_wa" 120 || true
-
-	info "Done."
 	printf '\n'
 	printf '================= IMPORTANT OUTPUT =================\n'
 	printf 'Install dir       : %s\n' "$install_dir"
@@ -368,6 +353,23 @@ EOF
 	printf '  X-Master-Key: %s\n' "$master_password"
 	printf '====================================================\n'
 	printf '\n'
+
+	write_compose_file "$install_dir" "$image_repo" "$image_tag" "$host_port"
+
+	ensure_docker_installed
+	init_docker_access
+	ensure_compose_v2
+
+	info "Docker version: $(docker_exec version --format '{{.Server.Version}}' 2>/dev/null || docker_exec version | head -n 5 | tr -d '\r')"
+	info "Compose version: $(docker_exec compose version 2>/dev/null | tr -d '\r')"
+
+	info "Pulling image…"
+	docker_exec pull "${image_repo}:${image_tag}"
+
+	info "Starting rijan_wa via docker compose…"
+	(cd "$install_dir" && docker_exec compose up -d)
+
+	wait_for_container_healthy "rijan_wa" 120 || true
 
 	info "Manage service:"
 	printf '  cd %s\n' "$install_dir"

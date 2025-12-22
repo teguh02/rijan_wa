@@ -22,6 +22,18 @@ chmod +x rijan_wa-install.sh
 ./rijan_wa-install.sh
 ```
 
+## ⚡ Instalasi Cepat (Windows)
+
+Untuk Windows, installer tersedia dalam PowerShell. Skrip ini **tidak akan menginstall Docker** otomatis.
+Kalau Docker/Docker Compose belum ada, instalasi akan **gagal** dan menampilkan pesan agar kamu install Docker Desktop terlebih dahulu.
+
+Download & jalankan (PowerShell):
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/teguh02/rijan_wa/refs/heads/main/scripts/installation/windows.ps1 -OutFile rijan_wa-install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\rijan_wa-install.ps1
+```
+
 Opsi (opsional):
 
 ```bash

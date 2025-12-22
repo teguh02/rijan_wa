@@ -22,6 +22,18 @@ chmod +x rijan_wa-install.sh
 ./rijan_wa-install.sh
 ```
 
+## Fast Install (Windows)
+
+For Windows, use the PowerShell installer. This script does **not** install Docker for you.
+If Docker / Docker Compose is missing, the script stops with an error message and a Docker Desktop URL.
+
+Download & run (PowerShell):
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/teguh02/rijan_wa/refs/heads/main/scripts/installation/windows.ps1 -OutFile rijan_wa-install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\rijan_wa-install.ps1
+```
+
 Optional overrides:
 
 ```bash
