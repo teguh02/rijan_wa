@@ -30,7 +30,14 @@ All notable changes to this project will be documented in this file.
 ### 📝 Docs
 
 - ✅ Added Indonesian rate limiting documentation with examples
+- ✅ Added English rate limiting documentation with examples (JavaScript, PHP, Python)
 - ✅ Updated docs index to reference rate limiting guide
+
+### 🐳 Docker
+
+- ✅ Published Docker image to Docker Hub:
+  - `teguh02/rijan_wa:1.4.0` (with rate limiting)
+  - `teguh02/rijan_wa:latest` (same digest as 1.4.0)
 
 ## [1.3.6] - 2025-12-22
 
