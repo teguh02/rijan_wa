@@ -24,6 +24,7 @@ Bahasa lain:
 9. [Kirim Media (Gambar/Video/Audio)](09-tenant-send-media.md)
 10. [List Chats](14-tenant-list-chats.md)
 11. [Webhook](19-webhooks-configuration.md)
+12. [Rate Limiting & Best Practices](rate-limiting.md)
 
 ### 📊 Monitoring & Troubleshooting
 

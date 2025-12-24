@@ -21,6 +21,7 @@ Other languages:
 9. [Send Media (Image/Video/Audio)](09-tenant-send-media.md)
 10. [List Chats](14-tenant-list-chats.md)
 11. [Webhooks](19-webhooks-configuration.md)
+12. [Rate Limiting & Best Practices](rate-limiting.md)
 
 ### Monitoring & Troubleshooting
 12. [Health Check & Metrics (Admin)](29-admin-health-metrics.md)

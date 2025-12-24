@@ -20,3 +20,6 @@ export const INTERNAL_SERVER_ERROR = (message: string = 'Internal server error')
 
 export const SERVICE_UNAVAILABLE = (message: string = 'Service unavailable') =>
   Boom.serverUnavailable(message);
+
+export const TOO_MANY_REQUESTS = (message: string = 'Too many requests') =>
+  Boom.tooManyRequests(message);

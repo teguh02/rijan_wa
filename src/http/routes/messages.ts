@@ -3,8 +3,9 @@ import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
 import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
 import { messageService } from '../../modules/messages/service';
 import { chatService } from '../../modules/messages/chat-service';
-import { BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND } from '../../utils/http-errors';
+import { BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, TOO_MANY_REQUESTS } from '../../utils/http-errors';
 import { requireDeviceConnected, validateJidInBody } from '../../middlewares/message-validation';
+import { checkMessageRateLimit } from '../../utils/rate-limit';
 import type {
   SendTextMessageRequest,
   SendMediaMessageRequest,
@@ -40,13 +41,6 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Params: MessageParams; Body: SendTextMessageRequest }>(
     '/:deviceId/messages/text',
     {
-      config: {
-        rateLimit: {
-          max: 60,
-          timeWindow: '1 minute',
-          keyGenerator: (req: any) => `${req.params.deviceId}`,
-        },
-      },
       schema: {
         description: 'Send a text message (with optional mentions)',
         tags: ['Messages'],
@@ -89,6 +83,17 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       const tenantId = request.tenant!.id;
       const body = request.body;
 
+      // Check rate limit
+      const rateLimitCheck = checkMessageRateLimit(tenantId, deviceId, 'text');
+      _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
+      _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
+      _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
+      
+      if (!rateLimitCheck.allowed) {
+        _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
+        throw TOO_MANY_REQUESTS(rateLimitCheck.message);
+      }
+
       const headerIdem = (request.headers['idempotency-key'] as string | undefined) || undefined;
       const idempotencyKey = headerIdem || (body as any)?.idempotencyKey;
 
@@ -115,13 +120,6 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Params: MessageParams; Body: SendMediaMessageRequest }>(
     '/:deviceId/messages/media',
     {
-      config: {
-        rateLimit: {
-          max: 30,
-          timeWindow: '1 minute',
-          keyGenerator: (req: any) => `${req.params.deviceId}`,
-        },
-      },
       schema: {
         description: 'Send a media message (image, video, audio, or document)',
         tags: ['Messages'],
@@ -171,6 +169,17 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       const { deviceId } = request.params;
       const tenantId = request.tenant!.id;
       const body = request.body;
+
+      // Check rate limit
+      const rateLimitCheck = checkMessageRateLimit(tenantId, deviceId, 'media');
+      _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
+      _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
+      _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
+      
+      if (!rateLimitCheck.allowed) {
+        _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
+        throw TOO_MANY_REQUESTS(rateLimitCheck.message);
+      }
 
       const headerIdem = (request.headers['idempotency-key'] as string | undefined) || undefined;
       const idempotencyKey = headerIdem || (body as any)?.idempotencyKey;
@@ -242,9 +251,21 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, _reply) => {
+      await requireDeviceConnected(request as any, _reply as any);
       const { deviceId } = request.params;
       const tenantId = request.tenant!.id;
       const body = request.body;
+
+      // Check rate limit
+      const rateLimitCheck = checkMessageRateLimit(tenantId, deviceId, 'location');
+      _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
+      _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
+      _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
+      
+      if (!rateLimitCheck.allowed) {
+        _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
+        throw TOO_MANY_REQUESTS(rateLimitCheck.message);
+      }
 
       try {
         const result = await messageService.sendLocation(tenantId, deviceId, body);
@@ -306,9 +327,21 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, _reply) => {
+      await requireDeviceConnected(request as any, _reply as any);
       const { deviceId } = request.params;
       const tenantId = request.tenant!.id;
       const body = request.body;
+
+      // Check rate limit
+      const rateLimitCheck = checkMessageRateLimit(tenantId, deviceId, 'contact');
+      _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
+      _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
+      _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
+      
+      if (!rateLimitCheck.allowed) {
+        _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
+        throw TOO_MANY_REQUESTS(rateLimitCheck.message);
+      }
 
       if (!body.contacts || body.contacts.length === 0) {
         throw BAD_REQUEST('At least one contact must be provided');
@@ -371,6 +404,17 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       const { deviceId } = request.params;
       const tenantId = request.tenant!.id;
       const body = request.body;
+
+      // Check rate limit
+      const rateLimitCheck = checkMessageRateLimit(tenantId, deviceId, 'reaction');
+      _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
+      _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
+      _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
+      
+      if (!rateLimitCheck.allowed) {
+        _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
+        throw TOO_MANY_REQUESTS(rateLimitCheck.message);
+      }
 
       try {
         const result = await messageService.sendReaction(tenantId, deviceId, body);
@@ -435,7 +479,21 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, _reply) => {
+      await requireDeviceConnected(request as any, _reply as any);
+      const { deviceId } = request.params;
+      const tenantId = request.tenant!.id;
       const body = request.body;
+
+      // Check rate limit
+      const rateLimitCheck = checkMessageRateLimit(tenantId, deviceId, 'poll');
+      _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
+      _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
+      _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
+      
+      if (!rateLimitCheck.allowed) {
+        _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
+        throw TOO_MANY_REQUESTS(rateLimitCheck.message);
+      }
 
       if (!body.options || body.options.length < 2 || body.options.length > 12) {
         throw BAD_REQUEST('Poll must have between 2 and 12 options');

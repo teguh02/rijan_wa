@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2025-12-24
+
+### 🛡️ Rate Limiting (Anti-Spam Protection)
+
+- ✅ Implemented **sliding window rate limiting** for all message sending endpoints to prevent spam and WhatsApp number blocks
+  - Protects against mass message flooding (e.g., PHP loop curl for spam)
+  - Per-device rate limiting (not global) so multiple tenants/devices can work independently
+  - In-memory store with automatic cleanup every 5 minutes
+- ✅ Rate limits by message type:
+  - Text: **60/minute** (lightweight)
+  - Media (image/video/audio/document): **30/minute** (heavier processing)
+  - Location: **40/minute**
+  - Contact (vCard): **40/minute**
+  - Reaction (emoji): **100/minute** (lightweight)
+  - Poll: **40/minute**
+- ✅ Returns HTTP **429 Too Many Requests** with helpful headers:
+  - `X-RateLimit-Limit`: max requests in window
+  - `X-RateLimit-Remaining`: remaining quota
+  - `X-RateLimit-Reset`: seconds until reset
+  - `Retry-After`: wait seconds before retry
+- ✅ Comprehensive documentation: [docs/id/rate-limiting.md](docs/id/rate-limiting.md)
+  - Client implementation examples (JavaScript, PHP, cURL)
+  - Queue-based approach for bulk sending
+  - Troubleshooting guide
+
+### 📝 Docs
+
+- ✅ Added Indonesian rate limiting documentation with examples
+- ✅ Updated docs index to reference rate limiting guide
+
 ## [1.3.6] - 2025-12-22
 
 ### 🐳 Docker
