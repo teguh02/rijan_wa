@@ -23,6 +23,12 @@ interface Config {
     max: number;
     window: number;
   };
+  sentry: {
+    dsn: string | undefined;
+    environment: string;
+    tracesSampleRate: number;
+    enabled: boolean;
+  };
   instanceId: string;
 }
 
@@ -43,6 +49,12 @@ const config: Config = {
   rateLimit: {
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
     window: parseInt(process.env.RATE_LIMIT_WINDOW || '60000', 10),
+  },
+  sentry: {
+    dsn: process.env.SENTRY_DSN || undefined,
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
+    tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1'),
+    enabled: !!process.env.SENTRY_DSN,
   },
   // Generate unique instance ID for distributed locking
   instanceId: process.env.INSTANCE_ID || crypto.randomUUID(),

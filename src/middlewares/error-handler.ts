@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { AppError, ErrorCode, StandardResponse } from '../types';
 import logger from '../utils/logger';
 import crypto from 'crypto';
+import { captureException, isSentryEnabled } from '../utils/sentry';
 
 /**
  * Request ID generator dan logger middleware
@@ -18,7 +19,7 @@ export async function requestLogger(
 ): Promise<void> {
   // Generate unique request ID
   request.requestId = crypto.randomBytes(16).toString('hex');
-  
+
   // Log incoming request
   logger.info({
     requestId: request.requestId,
@@ -83,7 +84,7 @@ export function errorHandler(
     return;
   }
 
-  // Handle unknown errors
+  // Handle unknown errors - capture to Sentry
   logger.error({
     requestId: request.requestId,
     error: {
@@ -92,6 +93,16 @@ export function errorHandler(
       stack: error.stack,
     },
   }, 'Unhandled error');
+
+  // Send to Sentry if enabled
+  if (isSentryEnabled()) {
+    captureException(error, {
+      requestId: request.requestId,
+      method: request.method,
+      url: request.url,
+      tenantId: request.tenant?.id,
+    });
+  }
 
   const response: StandardResponse = {
     success: false,

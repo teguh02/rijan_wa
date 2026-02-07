@@ -10,6 +10,7 @@ import logger from '../utils/logger';
 import { errorHandler, requestLogger } from '../middlewares/error-handler';
 import { runMigrations } from '../storage/migrate';
 import { closeDatabase } from '../storage/database';
+import { initSentry, flushSentry } from '../utils/sentry';
 // media routes imported dynamically to avoid TS resolution issues
 
 export async function createServer(): Promise<FastifyInstance<any, any, any, any>> {
@@ -123,6 +124,9 @@ export async function createServer(): Promise<FastifyInstance<any, any, any, any
 
 export async function startServer(): Promise<void> {
   try {
+    // Initialize Sentry error tracking (if SENTRY_DSN is set)
+    initSentry();
+
     // Run database migrations
     logger.info('Running database migrations...');
     runMigrations();
@@ -145,10 +149,10 @@ export async function startServer(): Promise<void> {
 
     // Register health routes FIRST (public, no auth required)
     await server.register(healthRoutes);
-    
+
     // Then register admin routes
     await registerAdminRoutes(server);
-    
+
     // Then register device routes (requires tenant auth - global hook)
     await registerDeviceRoutes(server);
     await server.register(messagesRoutes, { prefix: '/v1/devices' });
@@ -185,7 +189,7 @@ export async function startServer(): Promise<void> {
     // Graceful shutdown
     const shutdown = async () => {
       logger.info('Shutting down gracefully...');
-      
+
       try {
         // Close HTTP server
         await server.close();
@@ -224,6 +228,10 @@ export async function startServer(): Promise<void> {
 
         // Close database
         closeDatabase();
+
+        // Flush Sentry events before exit
+        await flushSentry();
+
         logger.info('Shutdown complete');
       } catch (error) {
         logger.error({ error }, 'Error during shutdown');

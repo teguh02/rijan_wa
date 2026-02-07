@@ -34,6 +34,18 @@ All notable changes to this project will be documented in this file.
 
 - ✅ Updated `Device` interface in `repositories.ts` to include `pairing` and `needs_pairing` statuses
 
+### 🔔 Sentry Error Logging (Optional)
+
+- ✅ Added **Sentry integration** for error tracking
+  - Install: `@sentry/node` package
+  - Enable by setting `SENTRY_DSN` environment variable
+  - Automatic capture of unhandled errors with request context
+- ✅ New module: `src/utils/sentry.ts`
+  - `initSentry()` - Initialize on server startup
+  - `captureException()` - Manual error capture
+  - `flushSentry()` - Flush events before shutdown
+- ✅ Updated `.env.example` with Sentry configuration options
+
 ## [1.4.0] - 2025-12-24
 
 ### 🛡️ Rate Limiting (Anti-Spam Protection)
