@@ -842,15 +842,86 @@ export class DeviceManager {
     });
 
     // Contact updates
+    // Contact updates
     socket.ev.on('contacts.update', async (updates) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
+        // Import dynamically to avoid circular dependencies if any, though repositories.ts is usually safe
+        const { LidPhoneRepository } = await import('../storage/repositories');
+        const lidPhoneRepo = new LidPhoneRepository();
+
+        const mappingsToStore: Array<{ lid: string; phoneJid: string; name?: string | null }> = [];
 
         for (const update of updates) {
           eventRepository.saveEvent(instance.state.tenantId, deviceId, 'contacts.update', update);
+
+          // Baileys v7 Contact structure handling
+          // contact.id could be LID or PN
+          const id = update.id;
+
+          // Case 1: ID is LID, and phoneNumber is provided
+          if (id?.endsWith('@lid') && (update as any).phoneNumber) {
+            mappingsToStore.push({
+              lid: id,
+              phoneJid: (update as any).phoneNumber + '@s.whatsapp.net', // Ensure JID format
+              name: update.name || update.notify || null
+            });
+          }
+
+          // Case 2: ID is PN, and LID is provided
+          // Note: update.lid might be present if id is PN
+          if (id?.endsWith('@s.whatsapp.net') && (update as any).lid) {
+            mappingsToStore.push({
+              lid: (update as any).lid,
+              phoneJid: id,
+              name: update.name || update.notify || null
+            });
+          }
         }
+
+        if (mappingsToStore.length > 0) {
+          lidPhoneRepo.upsertMany(deviceId, instance.state.tenantId, mappingsToStore);
+          logger.debug({ deviceId, count: mappingsToStore.length }, 'Stored extracted LID mappings from contacts.update');
+        }
+
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process contacts.update');
+      }
+    });
+
+    // LID to Phone Number mapping updates (Baileys v7+)
+    socket.ev.on('lid-mapping.update' as any, async (mappings: Array<{ lid: string; pn: string }>) => {
+      try {
+        const { LidPhoneRepository } = await import('../storage/repositories');
+        const lidPhoneRepo = new LidPhoneRepository();
+
+        logger.info({ deviceId, count: mappings?.length || 0 }, 'Received lid-mapping.update');
+
+        if (mappings && mappings.length > 0) {
+          const formattedMappings = mappings.map(m => ({
+            lid: m.lid,
+            phoneJid: m.pn,
+            name: null,
+          }));
+          lidPhoneRepo.upsertMany(deviceId, instance.state.tenantId, formattedMappings);
+          logger.debug({ deviceId, mappings: formattedMappings }, 'Stored LID->PN mappings');
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process lid-mapping.update');
+      }
+    });
+
+    // Also try to get mappings from signalRepository on connection
+    socket.ev.on('connection.update' as any, async (update: any) => {
+      if (update.connection === 'open') {
+        try {
+          const lidMapping = (socket as any).signalRepository?.lidMapping;
+          if (lidMapping && typeof lidMapping.getLIDsForPNs === 'function') {
+            logger.info({ deviceId }, 'LID mapping store available via signalRepository');
+          }
+        } catch (error) {
+          logger.debug({ error, deviceId }, 'signalRepository.lidMapping not available');
+        }
       }
     });
 

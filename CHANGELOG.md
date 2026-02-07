@@ -46,6 +46,13 @@ All notable changes to this project will be documented in this file.
   - `flushSentry()` - Flush events before shutdown
 - ✅ Updated `.env.example` with Sentry configuration options
 
+### 🚀 Baileys v7 Migration
+
+- ✅ Upgraded core library to `@whiskeysockets/baileys@7.0.0-rc.9`
+- ✅ Implemented `LidPhoneRepository` for `@lid` to phone number resolution
+- ✅ Updated `/chats` endpoint to automatically resolve `@lid` IDs to phone numbers
+- ✅ Added proactive mapping sync from `lid-mapping.update` and `contacts.update` events
+
 ## [1.4.0] - 2025-12-24
 
 ### 🛡️ Rate Limiting (Anti-Spam Protection)

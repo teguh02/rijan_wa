@@ -56,6 +56,7 @@ export interface ChatRow {
   muted: 0 | 1;
   created_at: number;
   updated_at: number;
+  phoneNumber?: string | null;
 }
 
 export interface DeviceChatSyncRow {
@@ -329,13 +330,18 @@ export class ChatRepository {
 
   listByDevice(deviceId: string, limit = 50, offset = 0): ChatRow[] {
     const stmt = this.db.prepare(`
-      SELECT *
-      FROM chats
-      WHERE device_id = ?
-      ORDER BY COALESCE(last_message_time, 0) DESC, updated_at DESC
+      SELECT c.*, lpm.phone_jid as phoneNumber
+      FROM chats c
+      LEFT JOIN lid_phone_map lpm ON lpm.lid = c.jid AND lpm.device_id = c.device_id
+      WHERE c.device_id = ?
+      ORDER BY COALESCE(c.last_message_time, 0) DESC, c.updated_at DESC
       LIMIT ? OFFSET ?
     `);
-    return stmt.all(deviceId, limit, offset) as ChatRow[];
+
+    const rows = stmt.all(deviceId, limit, offset) as (ChatRow & { phoneNumber: string | null })[];
+
+    // Map database result if needed
+    return rows;
   }
 
   countByDevice(deviceId: string): number {
@@ -401,5 +407,95 @@ export class ChatRepository {
         updated_at = excluded.updated_at
     `);
     stmt.run(deviceId, tenantId, now, now);
+  }
+}
+
+export interface LidPhoneMapping {
+  lid: string;
+  phone_jid: string;
+  device_id: string;
+  tenant_id: string;
+  name?: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export class LidPhoneRepository {
+  private db = getDatabase();
+
+  /**
+   * Store or update a LID -> Phone mapping
+   */
+  upsert(deviceId: string, tenantId: string, lid: string, phoneJid: string, name?: string | null): void {
+    const now = Math.floor(Date.now() / 1000);
+    const stmt = this.db.prepare(`
+      INSERT INTO lid_phone_map (lid, phone_jid, device_id, tenant_id, name, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(lid, device_id) DO UPDATE SET
+        phone_jid = excluded.phone_jid,
+        name = COALESCE(excluded.name, lid_phone_map.name),
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(lid, phoneJid, deviceId, tenantId, name || null, now, now);
+  }
+
+  /**
+   * Bulk upsert multiple mappings
+   */
+  upsertMany(deviceId: string, tenantId: string, mappings: Array<{ lid: string; phoneJid: string; name?: string | null }>): void {
+    if (!mappings?.length) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const stmt = this.db.prepare(`
+      INSERT INTO lid_phone_map (lid, phone_jid, device_id, tenant_id, name, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(lid, device_id) DO UPDATE SET
+        phone_jid = excluded.phone_jid,
+        name = COALESCE(excluded.name, lid_phone_map.name),
+        updated_at = excluded.updated_at
+    `);
+
+    const tx = this.db.transaction(() => {
+      for (const mapping of mappings) {
+        stmt.run(mapping.lid, mapping.phoneJid, deviceId, tenantId, mapping.name || null, now, now);
+      }
+    });
+    tx();
+  }
+
+  /**
+   * Get phone JID for a LID
+   */
+  getPhoneForLid(deviceId: string, lid: string): string | null {
+    const stmt = this.db.prepare('SELECT phone_jid FROM lid_phone_map WHERE device_id = ? AND lid = ?');
+    const row = stmt.get(deviceId, lid) as { phone_jid: string } | undefined;
+    return row?.phone_jid || null;
+  }
+
+  /**
+   * Get multiple phone JIDs for LIDs
+   */
+  getPhonesForLids(deviceId: string, lids: string[]): Map<string, string> {
+    if (!lids?.length) return new Map();
+
+    const result = new Map<string, string>();
+    const stmt = this.db.prepare('SELECT lid, phone_jid FROM lid_phone_map WHERE device_id = ? AND lid = ?');
+
+    for (const lid of lids) {
+      const row = stmt.get(deviceId, lid) as { lid: string; phone_jid: string } | undefined;
+      if (row) {
+        result.set(row.lid, row.phone_jid);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get all mappings for a device
+   */
+  getAllForDevice(deviceId: string): LidPhoneMapping[] {
+    const stmt = this.db.prepare('SELECT * FROM lid_phone_map WHERE device_id = ?');
+    return stmt.all(deviceId) as LidPhoneMapping[];
   }
 }
