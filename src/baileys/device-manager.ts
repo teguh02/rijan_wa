@@ -1,7 +1,5 @@
 import type {
-  DisconnectReason as DisconnectReasonType,
   WASocket,
-  AuthenticationState,
 } from '@whiskeysockets/baileys';
 
 // Dynamic import holder
@@ -1044,7 +1042,6 @@ export class DeviceManager {
     if (!instance) return false;
 
     const { DisconnectReason } = await getBaileysLib();
-    const { Boom } = await import('@hapi/boom');
 
     const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
 
