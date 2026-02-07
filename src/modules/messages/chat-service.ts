@@ -1,4 +1,4 @@
-import { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from '@whiskeysockets/baileys';
 import { deviceManager } from '../../baileys/device-manager';
 import { Chat, Message } from './types';
 import { MessageRepository } from './repository';

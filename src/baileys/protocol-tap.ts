@@ -1,5 +1,5 @@
 import type { BinaryNode } from '@whiskeysockets/baileys';
-import { decodeBinaryNode } from '@whiskeysockets/baileys';
+// remove static decodeBinaryNode import
 
 export type ProtocolTapDirection = 'in' | 'out';
 
@@ -75,8 +75,8 @@ function previewBinaryNode(node: BinaryNode, maxBytes: number): string {
           ? `[Buffer ${node.content.byteLength}]`
           : Array.isArray(node.content)
             ? node.content
-                .slice(0, 10)
-                .map((c) => (typeof c === 'string' ? c : (c as any)?.tag || typeof c))
+              .slice(0, 10)
+              .map((c) => (typeof c === 'string' ? c : (c as any)?.tag || typeof c))
             : node.content === undefined
               ? undefined
               : typeof node.content,
@@ -93,14 +93,15 @@ export class ProtocolTapBuffer {
     private readonly deviceId: string,
     private readonly maxItems: number = MAX_ITEMS_DEFAULT,
     private readonly maxPreviewBytes: number = MAX_PREVIEW_BYTES_DEFAULT
-  ) {}
+  ) { }
 
-  record(direction: ProtocolTapDirection, input: { nodeTag?: string; payload?: unknown; raw?: Buffer | Uint8Array }): void {
+  async record(direction: ProtocolTapDirection, input: { nodeTag?: string; payload?: unknown; raw?: Buffer | Uint8Array }): Promise<void> {
     const receivedAt = Date.now();
 
     // Prefer node parsing if we have a plaintext frame buffer
     if (input.raw && (Buffer.isBuffer(input.raw) || input.raw instanceof Uint8Array)) {
       try {
+        const { decodeBinaryNode } = await import('@whiskeysockets/baileys');
         const buf = Buffer.isBuffer(input.raw) ? input.raw : Buffer.from(input.raw);
         const node = decodeBinaryNode(buf);
         const nodePreview = previewBinaryNode(node as unknown as BinaryNode, this.maxPreviewBytes);

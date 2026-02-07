@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import logger from '../utils/logger';
-import { AuthenticationState, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import type { AuthenticationState } from '@whiskeysockets/baileys';
 
 /**
  * Baileys Auth State Storage - File-based dengan DB sync
@@ -301,6 +301,7 @@ export async function useDatabaseAuthState(
 }> {
   // Use Baileys standard file-based auth state
   const sessionDir = authStore.resolveSessionDir(tenantId, deviceId);
+  const { useMultiFileAuthState } = await import('@whiskeysockets/baileys');
   const { state, saveCreds: baileysJump } = await useMultiFileAuthState(sessionDir);
 
   // Wrap saveCreds untuk tambahan logging

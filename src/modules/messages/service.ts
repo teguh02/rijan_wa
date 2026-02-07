@@ -1,4 +1,4 @@
-import { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from '@whiskeysockets/baileys';
 import { MessageRepository, OutboxMessage } from './repository';
 import {
   MessageType,
@@ -117,7 +117,7 @@ export class MessageService {
    */
   async sendText(
     tenantId: string,
-      deviceId: string,
+    deviceId: string,
     request: SendTextMessageRequest,
     idempotencyKey?: string
   ): Promise<{ messageId: string; status: MessageStatus }> {
@@ -182,7 +182,7 @@ export class MessageService {
       this.messageRepo.updateStatus(
         message.id,
         MessageStatus.SENT,
-          sentMsg?.key?.id || undefined,
+        sentMsg?.key?.id || undefined,
         undefined
       );
 
@@ -265,7 +265,7 @@ export class MessageService {
       if (payload.mediaUrl) {
         // Validate URL to prevent SSRF
         this.validateMediaUrl(payload.mediaUrl);
-        
+
         const response = await axios.get(payload.mediaUrl, {
           responseType: 'arraybuffer',
           timeout: 30000,
@@ -312,7 +312,7 @@ export class MessageService {
       this.messageRepo.updateStatus(
         message.id,
         MessageStatus.SENT,
-          sentMsg?.key?.id || undefined,
+        sentMsg?.key?.id || undefined,
         undefined
       );
 
@@ -612,15 +612,15 @@ export class MessageService {
   private validateMediaUrl(urlString: string): void {
     try {
       const url = new URL(urlString);
-      
+
       // Only allow http/https
       if (!['http:', 'https:'].includes(url.protocol)) {
         throw new Error('Only HTTP/HTTPS URLs are allowed');
       }
-      
+
       // Block private IP ranges and localhost
       const hostname = url.hostname.toLowerCase();
-      
+
       // Block localhost variants
       if (
         hostname === 'localhost' ||
@@ -630,7 +630,7 @@ export class MessageService {
       ) {
         throw new Error('Localhost URLs are not allowed');
       }
-      
+
       // Block private IPv4 ranges
       if (
         hostname.startsWith('192.168.') ||
@@ -640,7 +640,7 @@ export class MessageService {
       ) {
         throw new Error('Private IP ranges are not allowed');
       }
-      
+
       // Block IPv6 private ranges (simplified check)
       if (
         hostname.startsWith('fc00:') ||
@@ -649,7 +649,7 @@ export class MessageService {
       ) {
         throw new Error('Private IPv6 ranges are not allowed');
       }
-      
+
     } catch (error: any) {
       if (error.message && error.message.includes('not allowed')) {
         throw error;

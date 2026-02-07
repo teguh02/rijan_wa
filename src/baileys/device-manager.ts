@@ -475,7 +475,7 @@ export class DeviceManager {
    * DEBUG: record a high-level outgoing operation.
    * This is not raw encrypted WS traffic; it's meant to correlate API actions with Baileys events.
    */
-  recordProtocolOut(deviceId: string, nodeTag: string, payload: unknown): void {
+  async recordProtocolOut(deviceId: string, nodeTag: string, payload: unknown): Promise<void> {
     if (!PROTOCOL_TAP_ENABLED) return;
     const instance = this.devices.get(deviceId);
     if (!instance?.protocolTap) return;
