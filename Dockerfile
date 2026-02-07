@@ -7,8 +7,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (git needed for some packages, build tools for native modules)
+RUN apk add --no-cache git python3 make g++
+RUN npm install
 
 # Copy source code
 COPY src ./src
@@ -19,8 +20,8 @@ RUN npm run build
 # Production image
 FROM node:22-alpine
 
-# Install dumb-init untuk proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and git (needed if dependencies use git)
+RUN apk add --no-cache dumb-init git
 
 # Create app user
 RUN addgroup -g 1001 -S nodejs && \
@@ -31,8 +32,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production && \
+# Install production dependencies only (using npm install to be more robust against lockfile mismatches)
+RUN npm install --only=production && \
     npm cache clean --force
 
 # Copy built application
