@@ -27,6 +27,9 @@ export function initSentry(): void {
 
     initialized = true;
     console.log(`[Sentry] Initialized for environment: ${config.sentry.environment}`);
+
+    // Send a test message to verify Sentry is working
+    Sentry.captureMessage('Rijan WA Gateway started - Sentry initialized', 'info');
 }
 
 /**
