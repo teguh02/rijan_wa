@@ -88,7 +88,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
       _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
       _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
-      
+
       if (!rateLimitCheck.allowed) {
         _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
         throw TOO_MANY_REQUESTS(rateLimitCheck.message);
@@ -175,7 +175,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
       _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
       _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
-      
+
       if (!rateLimitCheck.allowed) {
         _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
         throw TOO_MANY_REQUESTS(rateLimitCheck.message);
@@ -261,7 +261,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
       _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
       _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
-      
+
       if (!rateLimitCheck.allowed) {
         _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
         throw TOO_MANY_REQUESTS(rateLimitCheck.message);
@@ -337,7 +337,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
       _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
       _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
-      
+
       if (!rateLimitCheck.allowed) {
         _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
         throw TOO_MANY_REQUESTS(rateLimitCheck.message);
@@ -410,7 +410,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
       _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
       _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
-      
+
       if (!rateLimitCheck.allowed) {
         _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
         throw TOO_MANY_REQUESTS(rateLimitCheck.message);
@@ -489,7 +489,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
       _reply.header('X-RateLimit-Limit', rateLimitCheck.headers['X-RateLimit-Limit']);
       _reply.header('X-RateLimit-Remaining', rateLimitCheck.headers['X-RateLimit-Remaining']);
       _reply.header('X-RateLimit-Reset', rateLimitCheck.headers['X-RateLimit-Reset']);
-      
+
       if (!rateLimitCheck.allowed) {
         _reply.header('Retry-After', rateLimitCheck.headers['Retry-After']);
         throw TOO_MANY_REQUESTS(rateLimitCheck.message);
@@ -659,6 +659,7 @@ export const messagesRoutes: FastifyPluginAsync = async (fastify) => {
                     lastMessageTime: { type: 'number' },
                     archived: { type: 'boolean' },
                     muted: { type: 'boolean' },
+                    phoneNumber: { type: ['string', 'null'] },
                   },
                 },
               },

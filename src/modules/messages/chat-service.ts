@@ -31,6 +31,7 @@ export class ChatService {
         lastMessageTime: r.last_message_time || undefined,
         archived: r.archived === 1,
         muted: r.muted === 1,
+        phoneNumber: r.phoneNumber || null,
       }));
 
       // Keep cache as a small optimization for repeated reads
@@ -56,7 +57,7 @@ export class ChatService {
     jid: string,
     options: { limit?: number; before?: string } = {}
   ): Promise<Message[]> {
-      const { limit = 50 } = options;
+    const { limit = 50 } = options;
 
     try {
       // Get from database

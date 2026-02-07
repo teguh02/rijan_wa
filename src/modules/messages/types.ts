@@ -114,6 +114,7 @@ export interface Chat {
   lastMessageTime?: number;
   archived?: boolean;
   muted?: boolean;
+  phoneNumber?: string | null;
 }
 
 export interface Message {
