@@ -548,7 +548,7 @@ export class DeviceManager {
 
     // Chat history + chat list hydration (History Sync)
     // This event is the main source of initial chat list population.
-    socket.ev.on('messaging-history.set', async ({ chats, contacts, messages, isLatest, syncType, progress }) => {
+    socket.ev.on('messaging-history.set', async ({ chats, contacts }) => {
       try {
         const chatList = chats || [];
 
@@ -556,23 +556,29 @@ export class DeviceManager {
           if (chat?.id) instance.chatIndex.set(chat.id, chat);
         }
 
-        // Persist to DB as source of truth
-        const dbChats = chatList.map(mapChatForDb).filter(Boolean) as any;
-        this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
-        this.chatRepo.markHistorySync(tenantId, deviceId, dbChats.length);
+        // Process contacts for LID mapping
+        if (contacts && contacts.length > 0) {
+          const { LidPhoneRepository } = await import('../storage/repositories');
+          const lidRepo = new LidPhoneRepository();
+          const updates: any[] = [];
 
-        logger.info(
-          {
-            deviceId,
-            chatsCount: chatList.length,
-            contactsCount: contacts?.length || 0,
-            messagesCount: messages?.length || 0,
-            isLatest,
-            syncType,
-            progress,
-          },
-          'History sync received (messaging-history.set)'
-        );
+          for (const contact of contacts) {
+            // Check if contact has lid property
+            // contact.id is typically phone JID? 
+            if (contact.id && (contact as any).lid) {
+              updates.push({
+                lid: (contact as any).lid,
+                phoneJid: contact.id,
+                name: contact.name || contact.notify || contact.verifiedName
+              });
+            }
+          }
+
+          if (updates.length > 0) {
+            lidRepo.upsertMany(deviceId, tenantId, updates);
+            logger.info({ deviceId, count: updates.length }, 'Processed initial contacts for LID mapping');
+          }
+        }
       } catch (error) {
         logger.error(
           {
@@ -601,6 +607,68 @@ export class DeviceManager {
         logger.error({ error, deviceId }, 'Failed to process chats.upsert');
       }
     });
+
+    // LID Mapping Update
+    socket.ev.on('lid-mapping.update', async (update) => {
+      try {
+        const { LidPhoneRepository } = await import('../storage/repositories');
+        const lidRepo = new LidPhoneRepository();
+
+        // Structure is typically { mapping: { [lid: string]: string } } or just the map
+        const mapping = (update as any)?.mapping || update;
+
+        if (mapping && typeof mapping === 'object') {
+          const entries = Object.entries(mapping);
+          const updates = entries.map(([lid, phoneJid]) => ({
+            lid,
+            phoneJid: phoneJid as string,
+            name: null
+          }));
+
+          if (updates.length > 0) {
+            lidRepo.upsertMany(deviceId, tenantId, updates);
+            logger.debug({ deviceId, count: updates.length }, 'Processed lid-mapping.update');
+          }
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process lid-mapping.update');
+      }
+    });
+
+    // Contacts Upsert/Update
+    const handleContactsUpdate = async (contacts: any[]) => {
+      try {
+        const { LidPhoneRepository } = await import('../storage/repositories');
+        const lidRepo = new LidPhoneRepository();
+        const updates: any[] = [];
+
+        for (const contact of contacts) {
+          // If contact has both ID (phone) and LID, map them
+          // Baileys contact structure varies, but often:
+          // id: phone_jid (or lid)
+          // lid: string (if id is phone)
+          // phoneNumber: string (if id is lid? unlikely)
+
+          if (contact.id && contact.lid) {
+            updates.push({
+              lid: contact.lid,
+              phoneJid: contact.id, // Assuming ID is phone JID if LID is separate property
+              name: contact.name || contact.notify || contact.verifiedName
+            });
+          }
+        }
+
+        if (updates.length > 0) {
+          lidRepo.upsertMany(deviceId, tenantId, updates);
+          logger.debug({ deviceId, count: updates.length }, 'Processed contacts update/upsert for LID mapping');
+        }
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process contacts update');
+      }
+    };
+
+    socket.ev.on('contacts.upsert', (contacts) => handleContactsUpdate(contacts));
+    socket.ev.on('contacts.update', (contacts) => handleContactsUpdate(contacts));
 
     // Connection updates
     socket.ev.on('connection.update', async (update) => {
