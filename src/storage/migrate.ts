@@ -249,11 +249,34 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_device_chat_sync_updated_at ON device_chat_sync(updated_at);
     `,
   },
+  {
+    version: 4,
+    name: 'lid_phone_mapping_and_needs_pairing_status',
+    up: `
+      -- LID to Phone Number mapping table
+      -- Stores @lid -> @s.whatsapp.net mapping for message resolution
+      CREATE TABLE IF NOT EXISTS lid_phone_map (
+        lid TEXT NOT NULL,
+        phone_jid TEXT NOT NULL,
+        device_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        name TEXT,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        PRIMARY KEY (lid, device_id),
+        FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_lid_phone_map_device_id ON lid_phone_map(device_id);
+      CREATE INDEX IF NOT EXISTS idx_lid_phone_map_phone_jid ON lid_phone_map(phone_jid);
+    `,
+  },
 ];
 
 export function runMigrations(): void {
   const db = getDatabase();
-  
+
   // Get current version
   let currentVersion = 0;
   try {
@@ -263,19 +286,19 @@ export function runMigrations(): void {
     // migrations table doesn't exist yet
     logger.info('Migrations table not found, starting from version 0');
   }
-  
+
   // Run pending migrations
   for (const migration of migrations) {
     if (migration.version > currentVersion) {
       logger.info({ version: migration.version, name: migration.name }, 'Running migration');
-      
+
       try {
         db.exec(migration.up);
         db.prepare('INSERT INTO migrations (version, name) VALUES (?, ?)').run(
           migration.version,
           migration.name
         );
-        
+
         logger.info({ version: migration.version, name: migration.name }, 'Migration completed');
       } catch (error) {
         logger.error({ error, migration }, 'Migration failed');
@@ -283,7 +306,7 @@ export function runMigrations(): void {
       }
     }
   }
-  
+
   logger.info({ currentVersion: migrations[migrations.length - 1]?.version || 0 }, 'All migrations completed');
 }
 

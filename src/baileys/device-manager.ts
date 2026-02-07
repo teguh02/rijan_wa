@@ -119,89 +119,89 @@ export class DeviceManager {
         throw new Error('Device is already starting');
       }
 
-    // Initialize state
-    const state: DeviceState = {
-      deviceId,
-      tenantId,
-      status: DeviceStatus.CONNECTING,
-      isStarting: true,
-      reconnectAttempts: 0,
-      maxReconnectAttempts: 5,
-    };
+      // Initialize state
+      const state: DeviceState = {
+        deviceId,
+        tenantId,
+        status: DeviceStatus.CONNECTING,
+        isStarting: true,
+        reconnectAttempts: 0,
+        maxReconnectAttempts: 5,
+      };
 
-    const instance: DeviceInstance = {
-      state,
-      socket: null as any,
-      startedAt: Date.now(),
-      chatIndex: new Map(),
-      protocolTap: PROTOCOL_TAP_ENABLED ? new ProtocolTapBuffer(deviceId) : undefined,
-    };
+      const instance: DeviceInstance = {
+        state,
+        socket: null as any,
+        startedAt: Date.now(),
+        chatIndex: new Map(),
+        protocolTap: PROTOCOL_TAP_ENABLED ? new ProtocolTapBuffer(deviceId) : undefined,
+      };
 
-    this.devices.set(deviceId, instance);
+      this.devices.set(deviceId, instance);
 
-    try {
-      // Load auth state (standard Baileys multi-file) - namespaced by tenant/device
-      const { state: authState, saveCreds } = await useDatabaseAuthState(tenantId, deviceId, this.authStore);
+      try {
+        // Load auth state (standard Baileys multi-file) - namespaced by tenant/device
+        const { state: authState, saveCreds } = await useDatabaseAuthState(tenantId, deviceId, this.authStore);
 
-      // Get Baileys version
-      const { version, isLatest } = await fetchLatestBaileysVersion();
-      logger.info({ version, isLatest, deviceId }, 'Using Baileys version');
+        // Get Baileys version
+        const { version, isLatest } = await fetchLatestBaileysVersion();
+        logger.info({ version, isLatest, deviceId }, 'Using Baileys version');
 
-      // Create socket
-      const socket = makeWASocket({
-        version,
-        auth: {
-          creds: authState.creds,
-          keys: makeCacheableSignalKeyStore(authState.keys, logger),
-        },
-        printQRInTerminal: false,
-        // Baileys will present itself as a Desktop client. This impacts how WhatsApp treats the session.
-        // See Baileys wiki/docs around history sync behavior & client identity.
-        browser: Browsers.windows('Rijan WA Gateway'),
-        getMessage: async (_key) => {
-          return { conversation: '' };
-        },
-        logger,
-        markOnlineOnConnect: false,
-        // Helps populate chat list/history on first connection.
-        // Note: can be RAM heavy for large accounts.
-        syncFullHistory: true,
-      });
+        // Create socket
+        const socket = makeWASocket({
+          version,
+          auth: {
+            creds: authState.creds,
+            keys: makeCacheableSignalKeyStore(authState.keys, logger),
+          },
+          printQRInTerminal: false,
+          // Baileys will present itself as a Desktop client. This impacts how WhatsApp treats the session.
+          // See Baileys wiki/docs around history sync behavior & client identity.
+          browser: Browsers.windows('Rijan WA Gateway'),
+          getMessage: async (_key) => {
+            return { conversation: '' };
+          },
+          logger,
+          markOnlineOnConnect: false,
+          // Helps populate chat list/history on first connection.
+          // Note: can be RAM heavy for large accounts.
+          syncFullHistory: true,
+        });
 
-      instance.socket = socket;
-      state.isStarting = false;
+        instance.socket = socket;
+        state.isStarting = false;
 
-      // Setup lock refresh interval (every 60 seconds)
-      const lockRefreshInterval = setInterval(async () => {
-        try {
-          await this.distributedLock.refreshLock(deviceId);
-        } catch (error) {
-          logger.error({ error, deviceId }, 'Failed to refresh lock');
-        }
-      }, 60000); // 1 minute
+        // Setup lock refresh interval (every 60 seconds)
+        const lockRefreshInterval = setInterval(async () => {
+          try {
+            await this.distributedLock.refreshLock(deviceId);
+          } catch (error) {
+            logger.error({ error, deviceId }, 'Failed to refresh lock');
+          }
+        }, 60000); // 1 minute
 
-      instance.lockRefreshInterval = lockRefreshInterval;
+        instance.lockRefreshInterval = lockRefreshInterval;
 
-      // Setup event handlers
-      this.setupEventHandlers(deviceId, tenantId, socket, saveCreds);
+        // Setup event handlers
+        this.setupEventHandlers(deviceId, tenantId, socket, saveCreds);
 
-      // Update device status
-      this.deviceRepo.updateStatus(deviceId, 'connecting');
+        // Update device status
+        this.deviceRepo.updateStatus(deviceId, 'connecting');
 
-      logger.info({ deviceId, tenantId }, 'Device started');
+        logger.info({ deviceId, tenantId }, 'Device started');
 
-      return state;
-    } catch (error) {
-      state.isStarting = false;
-      state.status = DeviceStatus.FAILED;
-      state.lastError = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Release lock on error
-      await this.distributedLock.releaseLock(deviceId);
-      
-      logger.error({ error, deviceId }, 'Failed to start device');
-      throw error;
-    }
+        return state;
+      } catch (error) {
+        state.isStarting = false;
+        state.status = DeviceStatus.FAILED;
+        state.lastError = error instanceof Error ? error.message : 'Unknown error';
+
+        // Release lock on error
+        await this.distributedLock.releaseLock(deviceId);
+
+        logger.error({ error, deviceId }, 'Failed to start device');
+        throw error;
+      }
     } catch (error) {
       // Release lock if outer try-catch catches
       await this.distributedLock.releaseLock(deviceId);
@@ -437,13 +437,13 @@ export class DeviceManager {
       const processFn = (socket.ev as any)?.process as ((cb: (events: any) => Promise<void> | void) => void) | undefined;
       if (typeof processFn === 'function') {
         processFn(async (events) => {
-        try {
-          for (const [eventType, eventData] of Object.entries(events)) {
-            instance.protocolTap!.record('in', { nodeTag: eventType, payload: eventData });
+          try {
+            for (const [eventType, eventData] of Object.entries(events)) {
+              instance.protocolTap!.record('in', { nodeTag: eventType, payload: eventData });
+            }
+          } catch {
+            // never break the socket event loop
           }
-        } catch {
-          // never break the socket event loop
-        }
         });
       }
     }
@@ -643,7 +643,7 @@ export class DeviceManager {
       try {
         await saveCreds();
         logger.debug({ deviceId }, 'Credentials updated and saved');
-        
+
         // Sync session to database
         await this.syncSessionToDatabase(tenantId, deviceId);
       } catch (error) {
@@ -679,6 +679,26 @@ export class DeviceManager {
             const senderPn = (msg.key as any)?.senderPn as string | undefined;
             const jid = remoteJidRaw.endsWith('@lid') && senderPn ? senderPn : remoteJidRaw;
             const messageId = msg.key.id || 'unknown';
+
+            // Store @lid -> phone mapping for future lookups
+            if (remoteJidRaw.endsWith('@lid') && senderPn) {
+              try {
+                const db = (await import('../storage/database')).getDatabase();
+                const now = Math.floor(Date.now() / 1000);
+                const stmt = db.prepare(`
+                  INSERT INTO lid_phone_map (lid, phone_jid, device_id, tenant_id, name, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?)
+                  ON CONFLICT(lid, device_id) DO UPDATE SET
+                    phone_jid = excluded.phone_jid,
+                    name = COALESCE(excluded.name, lid_phone_map.name),
+                    updated_at = excluded.updated_at
+                `);
+                stmt.run(remoteJidRaw, senderPn, deviceId, instance.state.tenantId, msg.pushName || null, now, now);
+                logger.debug({ deviceId, lid: remoteJidRaw, phoneJid: senderPn }, 'Stored @lid -> phone mapping');
+              } catch (mappingError) {
+                logger.error({ mappingError, deviceId, lid: remoteJidRaw }, 'Failed to store @lid -> phone mapping');
+              }
+            }
 
             // Keep payload small & consistent with Baileys example patterns
             const inboxPayload = {
@@ -888,6 +908,16 @@ export class DeviceManager {
     if (!instance) return false;
 
     const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+
+    // 401 means session is corrupt or logged out from phone - requires re-pairing
+    if (statusCode === 401) {
+      instance.state.status = DeviceStatus.NEEDS_PAIRING;
+      instance.state.lastError = 'Session expired or corrupt - requires re-pairing';
+      this.deviceRepo.updateStatus(deviceId, 'needs_pairing');
+      logger.warn({ deviceId, statusCode }, 'Device session corrupt, marked as needs_pairing');
+      return false;
+    }
+
     const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
     logger.info(

@@ -52,7 +52,7 @@ export class ConnectionMonitor {
           INNER JOIN device_sessions ds ON ds.device_id = d.id
           INNER JOIN tenants t ON t.id = d.tenant_id
           WHERE t.status = 'active'
-            AND d.status != 'failed'
+            AND d.status NOT IN ('failed', 'needs_pairing')
         `
         )
         .all() as Array<{ device_id: string; tenant_id: string; status: string }>;

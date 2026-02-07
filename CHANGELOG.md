@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-02-07
+
+### 🔧 Session & Connection Fixes
+
+- ✅ Fixed **auto-reconnect infinite loop** on 401 session errors
+  - Devices with corrupt/expired sessions now marked as `needs_pairing` instead of endlessly retrying
+  - Connection monitor query updated to exclude `needs_pairing` devices
+- ✅ Added **`NEEDS_PAIRING`** status to `DeviceStatus` enum
+  - Clearly identifies devices requiring re-pairing after session corruption
+- ✅ Improved 401 disconnect handling in `handleDisconnect()`
+  - Logs clear warning message for debugging
+  - Sets device status to `needs_pairing` in database
+
+### 📱 @lid Message Format Support
+
+- ✅ Added **`lid_phone_map`** table (migration v4) to store @lid → phone mappings
+  - Enables future message lookups for @lid contacts
+  - Stores contact name when available
+- ✅ Automatic mapping storage when receiving messages with @lid format
+  - Extracts `senderPn` from message key and stores in database
+  - Falls back to @lid if `senderPn` not available
+
+### 🗃️ Database
+
+- ✅ Migration v4: `lid_phone_mapping_and_needs_pairing_status`
+  - Creates `lid_phone_map` table with proper indexes
+  - Runs automatically on server startup
+
+### 📝 Types
+
+- ✅ Updated `Device` interface in `repositories.ts` to include `pairing` and `needs_pairing` statuses
+
 ## [1.4.0] - 2025-12-24
 
 ### 🛡️ Rate Limiting (Anti-Spam Protection)

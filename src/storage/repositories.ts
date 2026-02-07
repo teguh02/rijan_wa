@@ -16,7 +16,7 @@ export interface Device {
   tenant_id: string;
   label: string;
   phone_number?: string;
-  status: 'disconnected' | 'connecting' | 'connected' | 'failed';
+  status: 'disconnected' | 'connecting' | 'connected' | 'failed' | 'pairing' | 'needs_pairing';
   created_at: number;
   last_seen?: number;
 }
@@ -188,7 +188,7 @@ export class AuditLogRepository {
   create(log: Omit<AuditLog, 'id' | 'created_at'>): void {
     const id = generateId('audit');
     const now = Math.floor(Date.now() / 1000);
-    
+
     const stmt = this.db.prepare(`
       INSERT INTO audit_logs (id, tenant_id, actor, action, resource_type, resource_id, meta, ip_address, user_agent, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

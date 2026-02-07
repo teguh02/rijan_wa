@@ -8,6 +8,7 @@ export enum DeviceStatus {
   CONNECTED = 'connected',
   FAILED = 'failed',
   PAIRING = 'pairing',
+  NEEDS_PAIRING = 'needs_pairing',
 }
 
 export enum PairingMethod {
