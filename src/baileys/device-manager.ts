@@ -82,6 +82,29 @@ export class DeviceManager {
   }
 
   /**
+   * Handle decryption errors (Bad MAC, No matching session)
+   * This mimics the fix in PR #2307 by deleting the corrupt session for the specific contact.
+   */
+  private async handleDecryptionError(deviceId: string, tenantId: string, errorObj: any): Promise<void> {
+    try {
+      // Attempt to extract JID from error object
+      // Pattern: {"key":{"remoteJid":"...","id":"..."},"err":{...}}
+      const remoteJid = errorObj?.key?.remoteJid;
+
+      if (remoteJid && typeof remoteJid === 'string') {
+        const sanitizedJid = remoteJid.replace(/:/g, '_');
+        logger.warn({ deviceId, remoteJid, sanitizedJid }, 'Detected decryption error. Attempting auto-recovery (deleting session)...');
+
+        // Delete session key (e.g., session-user@s.whatsapp.net)
+        // Baileys stores sessions with 'session-' prefix for JIDs
+        await this.authStore.deleteSessionKey(tenantId, deviceId, `session-${sanitizedJid}`);
+      }
+    } catch (err) {
+      logger.error({ err, deviceId }, 'Failed to handle decryption error recovery');
+    }
+  }
+
+  /**
    * Start device dan create socket
    */
   async startDevice(deviceId: string, tenantId: string): Promise<DeviceState> {
@@ -139,6 +162,35 @@ export class DeviceManager {
 
       this.devices.set(deviceId, instance);
 
+      const instanceLogger = logger.child({ deviceId, tenantId });
+
+      // Logger wrapper to intercept decryption errors
+      const wrappedLogger = new Proxy(instanceLogger, {
+        get: (target, prop, receiver) => {
+          const original = Reflect.get(target, prop, receiver);
+          if (typeof original === 'function' && (prop === 'error' || prop === 'warn')) {
+            return (obj: any, msg?: string, ...args: any[]) => {
+              // Call original first
+              original.apply(target, [obj, msg, ...args]);
+
+              // Check for decryption errors in object or message
+              const isDecryptionError =
+                (typeof msg === 'string' && (msg.includes('Bad MAC') || msg.includes('No matching session'))) ||
+                (obj?.err?.message && (obj.err.message.includes('Bad MAC') || obj.err.message.includes('No matching session'))) ||
+                (obj?.message && (obj.message.includes('Bad MAC') || obj.message.includes('No matching session')));
+
+              if (isDecryptionError) {
+                // Run recovery in background
+                this.handleDecryptionError(deviceId, tenantId, obj).catch(err => {
+                  instanceLogger.error({ err }, 'Failed manually triggered decryption recovery');
+                });
+              }
+            };
+          }
+          return original;
+        }
+      });
+
       try {
         // Load auth state (standard Baileys multi-file) - namespaced by tenant/device
         const { state: authState, saveCreds } = await useDatabaseAuthState(tenantId, deviceId, this.authStore);
@@ -152,7 +204,7 @@ export class DeviceManager {
           version,
           auth: {
             creds: authState.creds,
-            keys: makeCacheableSignalKeyStore(authState.keys, logger),
+            keys: makeCacheableSignalKeyStore(authState.keys, wrappedLogger),
           },
           printQRInTerminal: false,
           // Baileys will present itself as a Desktop client. This impacts how WhatsApp treats the session.
@@ -161,7 +213,7 @@ export class DeviceManager {
           getMessage: async (_key) => {
             return { conversation: '' };
           },
-          logger,
+          logger: wrappedLogger,
           markOnlineOnConnect: false,
           // Helps populate chat list/history on first connection.
           // Note: can be RAM heavy for large accounts.

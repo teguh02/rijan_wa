@@ -22,7 +22,7 @@ export class BaileysAuthStore {
 
   constructor(sessionsDir: string = path.join(process.cwd(), 'sessions')) {
     this.sessionsDir = sessionsDir;
-    
+
     // Ensure sessions directory exists
     if (!fs.existsSync(this.sessionsDir)) {
       fs.mkdirSync(this.sessionsDir, { recursive: true });
@@ -100,11 +100,11 @@ export class BaileysAuthStore {
    * Load session metadata dari filesystem
    * Digunakan untuk sync ke database
    */
-  async getSessionMetadata(tenantId: string, deviceId: string): Promise<{ 
-    hasSession: boolean; 
-    hasCreds: boolean; 
-    createdAt?: number; 
-    updatedAt?: number 
+  async getSessionMetadata(tenantId: string, deviceId: string): Promise<{
+    hasSession: boolean;
+    hasCreds: boolean;
+    createdAt?: number;
+    updatedAt?: number
   } | null> {
     const deviceDir = this.getDeviceDir(tenantId, deviceId);
     const credsFile = this.getFilePath(tenantId, deviceId, 'creds.json');
@@ -114,7 +114,7 @@ export class BaileysAuthStore {
     }
 
     const hasCreds = fs.existsSync(credsFile);
-    
+
     try {
       const stats = fs.statSync(deviceDir);
       const credsStats = hasCreds ? fs.statSync(credsFile) : null;
@@ -207,6 +207,36 @@ export class BaileysAuthStore {
       fs.rmSync(deviceDir, { recursive: true, force: true });
       logger.debug({ deviceId, tenantId }, 'Auth state deleted');
     }
+  }
+
+  /**
+   * Delete specific session key (e.g. 'session-user@s.whatsapp.net')
+   * Used for recovery from Bad MAC errors
+   */
+  async deleteSessionKey(tenantId: string, deviceId: string, keyName: string): Promise<boolean> {
+    // Baileys keys are sanitized: : becomes _ etc.
+    // The key passed here should be the raw key name used by useMultiFileAuthState (e.g., "session-jid")
+    // Note: useMultiFileAuthState sanitizes keys internally before writing to file.
+    // However, since we are targeting files directly, we need to replicate the logic or just try to find the match.
+
+    // Baileys uses `key.replace(/\//g, '__')` roughly.
+    // But for session keys, it's usually `session-${jid}`.
+    // Let's try to pass the exact filename or key.
+
+    // If keyName doesn't end with .json, append it
+    const fileName = keyName.endsWith('.json') ? keyName : `${keyName}.json`;
+    const targetFile = this.getFilePath(tenantId, deviceId, fileName);
+
+    if (fs.existsSync(targetFile)) {
+      try {
+        fs.unlinkSync(targetFile);
+        logger.warn({ deviceId, tenantId, file: fileName }, 'Deleted specific session key file (recovery)');
+        return true;
+      } catch (error) {
+        logger.error({ error, deviceId, file: fileName }, 'Failed to delete session key file');
+      }
+    }
+    return false;
   }
 
   /**
