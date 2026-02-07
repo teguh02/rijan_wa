@@ -1,6 +1,23 @@
 import { FastifyPluginAsync } from 'fastify';
 import { getDatabase } from '../../storage/database';
 import logger from '../../utils/logger';
+import fs from 'fs';
+import path from 'path';
+
+let baileysVersion: string = 'unknown';
+
+try {
+  // Try to find package.json in CWD
+  const pkgPath = path.join(process.cwd(), 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    // Remove ^ or ~ prefix if present for cleaner output
+    const v = pkg.dependencies?.['@whiskeysockets/baileys'];
+    baileysVersion = v ? v.replace(/^[\^~]/, '') : 'unknown';
+  }
+} catch (error) {
+  logger.warn({ error }, 'Failed to read Baileys version');
+}
 
 export const healthRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -20,6 +37,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
               status: { type: 'string' },
               timestamp: { type: 'number' },
               uptime: { type: 'number' },
+              'whatsapp-engine-version': { type: 'string' },
             },
           },
         },
@@ -30,6 +48,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
         status: 'alive',
         timestamp: Math.floor(Date.now() / 1000),
         uptime: process.uptime(),
+        'whatsapp-engine-version': baileysVersion,
       });
     }
   );
