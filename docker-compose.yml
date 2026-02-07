@@ -1,6 +1,7 @@
 ﻿services:
   rijan_wa:
     image: teguh02/rijan_wa:latest
+    build: .
     container_name: rijan_wa
     restart: unless-stopped
     ports:
