@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-02-07
+
+### 🔄 API Updates
+
+- ✅ Updated `GET /v1/devices/:deviceId/chats` response
+  - Added `phoneNumber` field to chat objects (resolved from @lid mapping)
+- ✅ Updated `GET /health` response
+  - Added `whatsapp_engine_version` field to expose internal Baileys version
+
+### 🐳 Docker & Build
+
+- ✅ Fixed `docker-compose.yml` to include `build: .` context
+  - Ensures `docker compose build` uses local source code instead of pulling old images
+  - Added instruction to use `--no-cache` for clean builds
+
 ## [1.4.1] - 2026-02-07
 
 ### 🔧 Session & Connection Fixes

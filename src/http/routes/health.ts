@@ -37,7 +37,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
               status: { type: 'string' },
               timestamp: { type: 'number' },
               uptime: { type: 'number' },
-              'whatsapp-engine-version': { type: 'string' },
+              'whatsapp_engine_version': { type: 'string' },
             },
           },
         },
@@ -48,7 +48,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
         status: 'alive',
         timestamp: Math.floor(Date.now() / 1000),
         uptime: process.uptime(),
-        'whatsapp-engine-version': baileysVersion,
+        'whatsapp_engine_version': baileysVersion,
       });
     }
   );
