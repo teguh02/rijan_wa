@@ -1,11 +1,19 @@
-import makeWASocket, {
-  DisconnectReason,
+import type {
+  DisconnectReason as DisconnectReasonType,
   WASocket,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  Browsers,
+  AuthenticationState,
 } from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
+
+// Dynamic import holder
+let BaileysLib: typeof import('@whiskeysockets/baileys');
+
+async function getBaileysLib() {
+  if (!BaileysLib) {
+    BaileysLib = await import('@whiskeysockets/baileys');
+  }
+  return BaileysLib;
+}
+
 import QRCode from 'qrcode';
 import { BaileysAuthStore, useDatabaseAuthState } from './auth-store';
 import { DeviceStatus, DeviceState, PairingMethod, DeviceConnectionInfo } from './types';
@@ -195,6 +203,11 @@ export class DeviceManager {
         // Load auth state (standard Baileys multi-file) - namespaced by tenant/device
         const { state: authState, saveCreds } = await useDatabaseAuthState(tenantId, deviceId, this.authStore);
 
+        // Load Baileys dynamically
+        const Baileys = await getBaileysLib();
+        const makeWASocket = Baileys.default;
+        const { fetchLatestBaileysVersion, makeCacheableSignalKeyStore, Browsers } = Baileys;
+
         // Get Baileys version
         const { version, isLatest } = await fetchLatestBaileysVersion();
         logger.info({ version, isLatest, deviceId }, 'Using Baileys version');
@@ -210,7 +223,7 @@ export class DeviceManager {
           // Baileys will present itself as a Desktop client. This impacts how WhatsApp treats the session.
           // See Baileys wiki/docs around history sync behavior & client identity.
           browser: Browsers.windows('Rijan WA Gateway'),
-          getMessage: async (_key) => {
+          getMessage: async (_key: any) => {
             return { conversation: '' };
           },
           logger: wrappedLogger,
@@ -651,7 +664,7 @@ export class DeviceManager {
 
       if (connection === 'close') {
         instance.state.lastDisconnectAt = Date.now();
-        const shouldReconnect = this.handleDisconnect(deviceId, lastDisconnect);
+        const shouldReconnect = await this.handleDisconnect(deviceId, lastDisconnect);
 
         if (shouldReconnect) {
           logger.info({ deviceId }, 'Reconnecting device...');
@@ -1026,11 +1039,14 @@ export class DeviceManager {
   /**
    * Handle disconnection dan decide apakah perlu reconnect
    */
-  private handleDisconnect(deviceId: string, lastDisconnect: any): boolean {
+  async handleDisconnect(deviceId: string, lastDisconnect: any): Promise<boolean> {
     const instance = this.devices.get(deviceId);
     if (!instance) return false;
 
-    const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+    const { DisconnectReason } = await getBaileysLib();
+    const { Boom } = await import('@hapi/boom');
+
+    const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
 
     // 401 means session is corrupt or logged out from phone - requires re-pairing
     if (statusCode === 401) {
