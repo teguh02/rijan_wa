@@ -272,6 +272,39 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_lid_phone_map_phone_jid ON lid_phone_map(phone_jid);
     `,
   },
+  {
+    version: 5,
+    name: 'expand_device_status_constraint',
+    up: `
+      -- SQLite doesn't support ALTER CHECK constraint, so we need to recreate the table
+      -- with the expanded status values: pairing, needs_pairing
+      
+      -- 1. Create new table with correct CHECK constraint
+      CREATE TABLE IF NOT EXISTS devices_new (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        phone_number TEXT,
+        status TEXT NOT NULL DEFAULT 'disconnected' CHECK(status IN ('disconnected', 'connecting', 'connected', 'failed', 'pairing', 'needs_pairing')),
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        last_seen INTEGER,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      );
+
+      -- 2. Copy data from old table
+      INSERT INTO devices_new SELECT * FROM devices;
+
+      -- 3. Drop old table
+      DROP TABLE devices;
+
+      -- 4. Rename new table to original name
+      ALTER TABLE devices_new RENAME TO devices;
+
+      -- 5. Recreate indexes
+      CREATE INDEX idx_devices_tenant_id ON devices(tenant_id);
+      CREATE INDEX idx_devices_status ON devices(status);
+    `,
+  },
 ];
 
 export function runMigrations(): void {

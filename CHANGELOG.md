@@ -2,7 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.3] - 2026-02-08
+
+### 🚀 ESM Migration
+
+- ✅ **Migrated entire project from CommonJS to ESM** for Baileys v7+ compatibility
+  - Updated `package.json` with `"type": "module"`
+  - Updated `tsconfig.json` with `module: "NodeNext"` and `moduleResolution: "NodeNext"`
+  - Added `.js` extensions to all 100+ static imports
+  - Added `.js` extensions to all 40+ dynamic `await import()` calls
+  - Fixed folder imports (`../config` → `../config/index.js`, etc.)
+  - Replaced `require.main === module` pattern with ESM-compatible `import.meta.url` check
+
+### 🗃️ Database
+
+- ✅ Migration v5: `expand_device_status_constraint`
+  - Recreates `devices` table with expanded CHECK constraint
+  - Now allows `pairing` and `needs_pairing` status values
+  - Fixes `SqliteError: CHECK constraint failed` error on session recovery
+
+### 🐛 Bug Fixes
+
+- ✅ Fixed `ERR_REQUIRE_ASYNC_MODULE` error when starting devices
+  - Root cause: Baileys v7+ uses ESM with top-level await, incompatible with CommonJS
+  - Solution: Full project migration to ESM module system
+- ✅ Fixed `ReferenceError: require is not defined in ES module scope` in `migrate.ts`
+
 ## [1.4.2] - 2026-02-07
+
 
 ### 🔄 API Updates
 
