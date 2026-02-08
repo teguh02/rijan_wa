@@ -1,4 +1,5 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+// Avoid static type import from ESM Baileys
+type WASocket = any;
 import { deviceManager } from '../../baileys/device-manager';
 import { Chat, Message } from './types';
 import { MessageRepository } from './repository';

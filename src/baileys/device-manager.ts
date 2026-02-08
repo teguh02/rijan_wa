@@ -1,9 +1,9 @@
-import type {
-  WASocket,
-} from '@whiskeysockets/baileys';
+// Avoid static imports from ESM Baileys - use 'any' types
+// Baileys lib will be loaded dynamically at runtime
+type WASocket = any;
 
 // Dynamic import holder
-let BaileysLib: typeof import('@whiskeysockets/baileys');
+let BaileysLib: any;
 
 async function getBaileysLib() {
   if (!BaileysLib) {
@@ -548,7 +548,7 @@ export class DeviceManager {
 
     // Chat history + chat list hydration (History Sync)
     // This event is the main source of initial chat list population.
-    socket.ev.on('messaging-history.set', async ({ chats, contacts }) => {
+    socket.ev.on('messaging-history.set', async ({ chats, contacts }: any) => {
       try {
         const chatList = chats || [];
 
@@ -622,7 +622,7 @@ export class DeviceManager {
       }
     });
 
-    socket.ev.on('chats.upsert', async (chats) => {
+    socket.ev.on('chats.upsert', async (chats: any) => {
       try {
         const chatList = chats || [];
 
@@ -643,7 +643,7 @@ export class DeviceManager {
     });
 
     // LID Mapping Update
-    socket.ev.on('lid-mapping.update', async (update) => {
+    socket.ev.on('lid-mapping.update', async (update: any) => {
       try {
         const { LidPhoneRepository } = await import('../storage/repositories');
         const lidRepo = new LidPhoneRepository();
@@ -718,11 +718,11 @@ export class DeviceManager {
       }
     };
 
-    socket.ev.on('contacts.upsert', (contacts) => handleContactsUpdate(contacts));
-    socket.ev.on('contacts.update', (contacts) => handleContactsUpdate(contacts));
+    socket.ev.on('contacts.upsert', (contacts: any) => handleContactsUpdate(contacts));
+    socket.ev.on('contacts.update', (contacts: any) => handleContactsUpdate(contacts));
 
     // Connection updates
-    socket.ev.on('connection.update', async (update) => {
+    socket.ev.on('connection.update', async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
       logger.debug({ deviceId, connection, hasQr: !!qr }, 'Connection update');
@@ -834,7 +834,7 @@ export class DeviceManager {
     });
 
     // Messages (incoming)
-    socket.ev.on('messages.upsert', async (m) => {
+    socket.ev.on('messages.upsert', async (m: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
         const { webhookService } = await import('../modules/webhooks/service');
@@ -949,7 +949,7 @@ export class DeviceManager {
     });
 
     // Message updates (edits, acks)
-    socket.ev.on('messages.update', async (updates) => {
+    socket.ev.on('messages.update', async (updates: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
         const { webhookService } = await import('../modules/webhooks/service');
@@ -982,7 +982,7 @@ export class DeviceManager {
     });
 
     // Message receipts (delivery/read)
-    socket.ev.on('message-receipt.update', async (updates) => {
+    socket.ev.on('message-receipt.update', async (updates: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
         const { webhookService } = await import('../modules/webhooks/service');
@@ -1004,7 +1004,7 @@ export class DeviceManager {
     });
 
     // Group updates
-    socket.ev.on('groups.update', async (updates) => {
+    socket.ev.on('groups.update', async (updates: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
         const { webhookService } = await import('../modules/webhooks/service');
@@ -1027,7 +1027,7 @@ export class DeviceManager {
     });
 
     // Group participant updates
-    socket.ev.on('group-participants.update', async (update) => {
+    socket.ev.on('group-participants.update', async (update: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
         const { webhookService } = await import('../modules/webhooks/service');
@@ -1052,7 +1052,7 @@ export class DeviceManager {
 
     // Contact updates
     // Contact updates
-    socket.ev.on('contacts.update', async (updates) => {
+    socket.ev.on('contacts.update', async (updates: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
         // Import dynamically to avoid circular dependencies if any, though repositories.ts is usually safe
@@ -1135,7 +1135,7 @@ export class DeviceManager {
     });
 
     // Chat updates
-    socket.ev.on('chats.update', async (updates) => {
+    socket.ev.on('chats.update', async (updates: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository');
 

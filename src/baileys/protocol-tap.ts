@@ -1,5 +1,5 @@
-import type { BinaryNode } from '@whiskeysockets/baileys';
-// remove static decodeBinaryNode import
+// Avoid static type import from ESM Baileys
+type BinaryNode = any;
 
 export type ProtocolTapDirection = 'in' | 'out';
 
@@ -76,7 +76,7 @@ function previewBinaryNode(node: BinaryNode, maxBytes: number): string {
           : Array.isArray(node.content)
             ? node.content
               .slice(0, 10)
-              .map((c) => (typeof c === 'string' ? c : (c as any)?.tag || typeof c))
+              .map((c: any) => (typeof c === 'string' ? c : (c as any)?.tag || typeof c))
             : node.content === undefined
               ? undefined
               : typeof node.content,

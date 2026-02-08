@@ -104,11 +104,21 @@ export function errorHandler(
     });
   }
 
+  // Extract file and line from stack trace for better debugging
+  const stackFirstLine = error.stack?.split('\n')[1]?.trim() || '';
+  const fileMatch = stackFirstLine.match(/\((.+):(\d+):(\d+)\)/) || stackFirstLine.match(/at (.+):(\d+):(\d+)/);
+  const sourceInfo = fileMatch
+    ? { file: fileMatch[1], line: fileMatch[2], column: fileMatch[3] }
+    : null;
+
   const response: StandardResponse = {
     success: false,
     error: {
       code: ErrorCode.INTERNAL_ERROR,
-      message: 'Internal server error',
+      message: process.env.NODE_ENV === 'production'
+        ? error.message // Show actual error in prod for debugging
+        : `${error.message}${sourceInfo ? ` (${sourceInfo.file}:${sourceInfo.line})` : ''}`,
+      details: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
     },
     requestId: request.requestId,
   };
