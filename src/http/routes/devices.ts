@@ -739,4 +739,5 @@ export async function registerDeviceRoutes(server: FastifyInstance): Promise<voi
 
     reply.send(response);
   });
+
 }

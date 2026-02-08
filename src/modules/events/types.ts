@@ -7,7 +7,9 @@ export type EventType =
   | 'contacts.update'
   | 'chats.update'
   | 'connection.update'
-  | 'creds.update';
+  | 'creds.update'
+  | 'contacts.upsert'
+  | 'messaging-history.set';
 
 export interface Event {
   id: string;

@@ -1,6 +1,14 @@
 # Rijan WA Gateway
 
-WhatsApp Gateway built on Baileys with multi-tenant + multi-device support.
+WhatsApp Gateway built on Baileys with multi-tenant + multi-device support. Now fully migrated to **ESM** for better performance and compatibility with the latest Baileys version.
+
+## Key Features
+
+- **Multi-Tenant & Multi-Device**: Manage multiple WhatsApp accounts under different tenants.
+- **Real-time Updates**: WebSocket integration for instant chat, message, and contact updates.
+- **Robust Messaging**: Send text, media, locations, and contacts with automatic rate limiting.
+- **Smart LID Mapping**: Automatically resolves `@lid` (WhatsApp's internal identifiers) to phone numbers for correct contact display.
+- **Developer Friendly**: Comprehensive REST API with Swagger docs and TypeScript support.
 
 ## Quick Install (Linux)
 
@@ -92,6 +100,21 @@ curl -X POST http://localhost:3000/v1/devices/DEVICE_ID/messages/text \
   -H "Content-Type: application/json" \
   -d '{"to":"628123456789@s.whatsapp.net","text":"Hello!"}'
 ```
+
+### 8) Connect WebSocket (Real-time updates)
+
+Connect to the WebSocket endpoint to receive real-time events (chats, messages, contacts).
+You can use `Authorization: Bearer <TOKEN>` header (preferred) or `?token=<TOKEN>` query param.
+
+```bash
+# Example using wscat
+npx wscat -c "ws://localhost:3000/v1/devices/DEVICE_ID/chat-ws" -H "Authorization: Bearer YOUR_TENANT_API_KEY"
+```
+
+**Events received:**
+- `chats.set`: Initial chat list (upon connection)
+- `messages.upsert`: New messages (includes simplified `content` field)
+- `contacts.upsert`: Contact list updates
 
 ## Documentation
 

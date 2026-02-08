@@ -38,6 +38,10 @@ All notable changes to this project will be documented in this file.
   - Event: `chats.set`
   - Payload matches `GET /chats` response format (limit 50)
 
+### 📱 @lid & Message Format
+- ✅ **Improved LID Mapping**: Added logic to extract and store `@lid` to phone number mappings from `messaging-history.set` and `messages.upsert` events.
+- ✅ **Simplified Message Content**: Added `content` field to `messages.upsert` payload (inbox) containing plain text representation of the message (conversation, caption, etc.) for easier consumption.
+
 
 ## [1.4.2] - 2026-02-07
 

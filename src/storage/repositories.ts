@@ -478,17 +478,18 @@ export class LidPhoneRepository {
   getPhonesForLids(deviceId: string, lids: string[]): Map<string, string> {
     if (!lids?.length) return new Map();
 
-    const result = new Map<string, string>();
-    const stmt = this.db.prepare('SELECT lid, phone_jid FROM lid_phone_map WHERE device_id = ? AND lid = ?');
+    const placeholders = lids.map(() => '?').join(',');
+    const stmt = this.db.prepare(`SELECT lid, phone_jid FROM lid_phone_map WHERE device_id = ? AND lid IN (${placeholders})`);
+    const rows = stmt.all(deviceId, ...lids) as Array<{ lid: string; phone_jid: string }>;
 
-    for (const lid of lids) {
-      const row = stmt.get(deviceId, lid) as { lid: string; phone_jid: string } | undefined;
-      if (row) {
-        result.set(row.lid, row.phone_jid);
-      }
-    }
+    const map = new Map<string, string>();
+    rows.forEach(r => map.set(r.lid, r.phone_jid));
+    return map;
+  }
 
-    return result;
+  debugList(deviceId: string): Array<{ lid: string; phone_jid: string; name: string | null; updated_at: number }> {
+    const stmt = this.db.prepare('SELECT * FROM lid_phone_map WHERE device_id = ? LIMIT 100');
+    return stmt.all(deviceId) as any[];
   }
 
   /**

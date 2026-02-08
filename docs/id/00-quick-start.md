@@ -251,6 +251,20 @@ curl -X POST http://localhost:3000/v1/devices/DEVICE_ID/messages/text \
 }
 ```
 
+### Langkah 7: Koneksi WebSocket (Real-time Updates)
+
+Gunakan WebSocket untuk menerima event real-time (pesan baru, status chat):
+
+```bash
+# Contoh menggunakan wscat
+npx wscat -c "ws://localhost:3000/v1/devices/DEVICE_ID/chat-ws" -H "Authorization: Bearer YOUR_TENANT_API_KEY"
+```
+
+**Event yang diterima:**
+- `chats.set`: List chat awal (saat connect)
+- `messages.upsert`: Pesan baru masuk (termasuk field `content` yang sudah disederhanakan)
+- `contacts.upsert`: Update kontak
+
 ## ⏭️ Langkah Berikutnya
 
 ### Pelajari Lebih Lanjut

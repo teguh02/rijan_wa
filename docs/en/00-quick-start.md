@@ -190,6 +190,20 @@ Example response:
 }
 ```
 
+### Step 7: Connect WebSocket (Real-time updates)
+
+Receive real-time events (new messages, chat updates) via WebSocket:
+
+```bash
+# Example using wscat
+npx wscat -c "ws://localhost:3000/v1/devices/DEVICE_ID/chat-ws" -H "Authorization: Bearer YOUR_TENANT_API_KEY"
+```
+
+**Events to watch:**
+- `chats.set`: Initial chat list
+- `messages.upsert`: Incoming messages (includes simplified `content` field)
+- `contacts.upsert`: Contact updates
+
 ## Next steps
 
 - Read the full docs index: [README.md](README.md)

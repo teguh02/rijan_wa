@@ -851,7 +851,18 @@ export class DeviceManager {
           if (message.contactMessage || message.contactsArrayMessage) return 'contact';
           if (message.reactionMessage) return 'reaction';
           if (message.pollCreationMessage || message.pollUpdateMessage) return 'poll';
+          if (message.pollCreationMessage || message.pollUpdateMessage) return 'poll';
           return 'text';
+        };
+
+        const extractMessageContent = (message: any): string | null => {
+          if (!message) return null;
+          return message.conversation
+            || message.extendedTextMessage?.text
+            || message.imageMessage?.caption
+            || message.videoMessage?.caption
+            || message.documentMessage?.caption
+            || null;
         };
 
         for (const msg of m.messages) {
@@ -859,6 +870,16 @@ export class DeviceManager {
             // Save to event log and inbox
             const remoteJidRaw = msg.key.remoteJid || 'unknown';
             const messageId = msg.key.id || 'unknown';
+
+            // Keep payload small & consistent with Baileys example patterns
+            const inboxPayload = {
+              key: msg.key,
+              message: msg.message,
+              pushName: msg.pushName,
+              messageTimestamp: msg.messageTimestamp,
+              type: inferInboxType(msg.message),
+              content: extractMessageContent(msg.message)
+            };
 
             // ✅ FIX: Use v7 remoteJidAlt/participantAlt instead of deprecated senderPn
             // In Baileys 7.0.0, MessageKey now has:
@@ -900,14 +921,6 @@ export class DeviceManager {
                 logger.error({ mappingError, deviceId, lid: remoteJidRaw }, 'Failed to store @lid -> phone mapping');
               }
             }
-
-            // Keep payload small & consistent with Baileys example patterns
-            const inboxPayload = {
-              key: msg.key,
-              message: msg.message,
-              pushName: msg.pushName,
-              messageTimestamp: msg.messageTimestamp,
-            };
 
             eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messages.upsert', {
               ...inboxPayload,
@@ -1052,6 +1065,49 @@ export class DeviceManager {
 
     // Contact updates
     // Contact updates
+    socket.ev.on('contacts.upsert', async (contacts: any[]) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { LidPhoneRepository } = await import('../storage/repositories.js');
+        const lidPhoneRepo = new LidPhoneRepository();
+
+        const mappingsToStore: Array<{ lid: string; phoneJid: string; name?: string | null }> = [];
+
+        logger.info({ deviceId, count: contacts.length }, 'Received contacts.upsert');
+
+        for (const contact of contacts) {
+          // Baileys v7 Contact structure handling
+          const id = contact.id;
+
+          // Case 1: ID is LID, and phoneNumber is provided
+          if (id?.endsWith('@lid') && (contact as any).phoneNumber) {
+            mappingsToStore.push({
+              lid: id,
+              phoneJid: (contact as any).phoneNumber + '@s.whatsapp.net',
+              name: contact.name || contact.notify || null
+            });
+          }
+          // Case 2: ID is PN, and LID is provided
+          else if (id?.endsWith('@s.whatsapp.net') && (contact as any).lid) {
+            mappingsToStore.push({
+              lid: (contact as any).lid,
+              phoneJid: id,
+              name: contact.name || contact.notify || null
+            });
+          }
+        }
+
+        if (mappingsToStore.length > 0) {
+          lidPhoneRepo.upsertMany(deviceId, instance.state.tenantId, mappingsToStore);
+          logger.info({ deviceId, count: mappingsToStore.length }, 'Stored extracted LID mappings from contacts.upsert');
+        }
+
+        eventRepository.saveEvent(instance.state.tenantId, deviceId, 'contacts.upsert', contacts);
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process contacts.upsert');
+      }
+    });
+
     socket.ev.on('contacts.update', async (updates: any) => {
       try {
         const { eventRepository } = await import('../modules/events/repository.js');
@@ -1095,6 +1151,73 @@ export class DeviceManager {
 
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process contacts.update');
+      }
+    });
+
+    // Messaging History Set (Initial Sync)
+    socket.ev.on('messaging-history.set', async (history: any) => {
+      try {
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { LidPhoneRepository } = await import('../storage/repositories.js');
+        const lidPhoneRepo = new LidPhoneRepository();
+
+        const contacts = history.contacts || [];
+        const mappingsToStore: Array<{ lid: string; phoneJid: string; name?: string | null }> = [];
+
+        logger.info({ deviceId, contactCount: contacts.length, chatCount: history.chats?.length }, 'Received messaging-history.set');
+
+        // Sample debug log for first contact structure
+        if (contacts.length > 0) {
+          logger.info({ firstContact: contacts[0] }, 'Debug: First contact structure in history');
+        }
+
+        for (const contact of contacts) {
+          const id = contact.id;
+          let lid: string | undefined;
+          let phoneJid: string | undefined;
+
+          // Normalize ID and Extract LID/Phone
+          if (id?.endsWith('@lid')) {
+            lid = id;
+            if ((contact as any).phoneNumber) {
+              let pn = (contact as any).phoneNumber;
+              if (!pn.includes('@')) pn += '@s.whatsapp.net';
+              phoneJid = pn;
+            }
+          } else if (id?.endsWith('@s.whatsapp.net')) {
+            phoneJid = id;
+            if ((contact as any).lid) {
+              lid = (contact as any).lid;
+            }
+          }
+
+          if (lid && phoneJid) {
+            mappingsToStore.push({
+              lid,
+              phoneJid,
+              name: contact.name || contact.notify || null
+            });
+          }
+        }
+
+        if (mappingsToStore.length > 0) {
+          lidPhoneRepo.upsertMany(deviceId, instance.state.tenantId, mappingsToStore);
+          logger.info({ deviceId, count: mappingsToStore.length }, 'Stored extracted LID mappings from messaging-history.set');
+        } else {
+          logger.warn({ deviceId }, 'No LID mappings extracted from messaging-history.set');
+        }
+
+        // Simpan event tapi hati-hati payloadnya besar, mungkin perlu di-truncate
+        const historySummary = {
+          ...history,
+          contacts: history.contacts?.length,
+          chats: history.chats?.length,
+          messages: history.messages?.length
+        };
+
+        eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messaging-history.set', historySummary);
+      } catch (error) {
+        logger.error({ error, deviceId }, 'Failed to process messaging-history.set');
       }
     });
 
