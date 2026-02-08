@@ -310,8 +310,9 @@ export function runMigrations(): void {
   logger.info({ currentVersion: migrations[migrations.length - 1]?.version || 0 }, 'All migrations completed');
 }
 
-// CLI untuk run migrations
-if (require.main === module) {
+// CLI untuk run migrations (ESM-compatible main module check)
+const isMainModule = import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+if (isMainModule) {
   try {
     runMigrations();
     logger.info('Database migration completed successfully');
