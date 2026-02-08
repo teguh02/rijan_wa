@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { DeviceRepository } from '../storage/repositories';
-import { AppError, ErrorCode } from '../types';
-import logger from '../utils/logger';
+import { DeviceRepository } from '../storage/repositories.js';
+import { AppError, ErrorCode } from '../types/index.js';
+import logger from '../utils/logger.js';
 
 const deviceRepo = new DeviceRepository();
 

@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { verifyMasterKey as verifyKey } from '../utils/crypto';
-import { AppError, ErrorCode } from '../types';
-import logger from '../utils/logger';
-import { AuditLogRepository } from '../storage/repositories';
+import { verifyMasterKey as verifyKey } from '../utils/crypto.js';
+import { AppError, ErrorCode } from '../types/index.js';
+import logger from '../utils/logger.js';
+import { AuditLogRepository } from '../storage/repositories.js';
 
 const auditRepo = new AuditLogRepository();
 

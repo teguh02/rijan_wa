@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
-import { getDatabase } from '../../storage/database';
-import logger from '../../utils/logger';
+import { getDatabase } from '../../storage/database.js';
+import logger from '../../utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 

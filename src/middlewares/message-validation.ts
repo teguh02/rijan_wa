@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { deviceManager } from '../baileys/device-manager';
-import { AppError, ErrorCode } from '../types';
+import { deviceManager } from '../baileys/device-manager.js';
+import { AppError, ErrorCode } from '../types/index.js';
 
 function isValidJid(jid: string): boolean {
   return /@s\.whatsapp\.net$/.test(jid) || /@g\.us$/.test(jid);

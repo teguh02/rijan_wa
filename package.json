@@ -1,6 +1,7 @@
 {
   "name": "rijan_wa",
   "version": "1.0.0",
+  "type": "module",
   "description": "A lightweight, multi-tenant WhatsApp gateway with socket-based communication and multi-device support",
   "main": "dist/index.js",
   "scripts": {

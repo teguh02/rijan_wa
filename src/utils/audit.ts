@@ -1,6 +1,6 @@
-import { getDatabase } from '../storage/database';
-import { generateId } from './crypto';
-import logger from './logger';
+import { getDatabase } from '../storage/database.js';
+import { generateId } from './crypto.js';
+import logger from './logger.js';
 
 export interface AuditLogEntry {
   actor: string;

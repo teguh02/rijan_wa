@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
-import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
-import { BAD_REQUEST, NOT_FOUND } from '../../utils/http-errors';
-import { saveStreamToFile, getMediaPath } from '../../storage/media';
+import { verifyTenantApiKey } from '../../middlewares/tenant-auth.js';
+import { verifyDeviceOwnership } from '../../middlewares/device-ownership.js';
+import { BAD_REQUEST, NOT_FOUND } from '../../utils/http-errors.js';
+import { saveStreamToFile, getMediaPath } from '../../storage/media.js';
 import fs from 'fs';
 
 export const mediaRoutes: FastifyPluginAsync = async (fastify) => {

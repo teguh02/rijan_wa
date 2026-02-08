@@ -1,4 +1,4 @@
-import { AppError, ErrorCode } from '../types';
+import { AppError, ErrorCode } from '../types/index.js';
 
 /**
  * Normalize WhatsApp JID to standard format

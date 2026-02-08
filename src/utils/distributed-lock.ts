@@ -1,5 +1,5 @@
-import { getDatabase } from '../storage/database';
-import logger from '../utils/logger';
+import { getDatabase } from '../storage/database.js';
+import logger from '../utils/logger.js';
 
 const LOCK_TTL_SECONDS = 300; // 5 minutes
 const LOCK_CHECK_INTERVAL_MS = 1000; // 1 second

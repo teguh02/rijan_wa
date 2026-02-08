@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { verifyTenantApiKey as verifyApiKey, hashApiKey } from '../utils/crypto';
-import { AppError, ErrorCode } from '../types';
-import { TenantRepository } from '../storage/repositories';
-import logger from '../utils/logger';
+import { verifyTenantApiKey as verifyApiKey, hashApiKey } from '../utils/crypto.js';
+import { AppError, ErrorCode } from '../types/index.js';
+import { TenantRepository } from '../storage/repositories.js';
+import logger from '../utils/logger.js';
 
 const tenantRepo = new TenantRepository();
 

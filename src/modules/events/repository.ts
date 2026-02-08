@@ -1,6 +1,6 @@
-import { getDatabase } from '../../storage/database';
-import { generateId } from '../../utils/crypto';
-import type { Event, EventType, InboxMessage } from './types';
+import { getDatabase } from '../../storage/database.js';
+import { generateId } from '../../utils/crypto.js';
+import type { Event, EventType, InboxMessage } from './types.js';
 
 export class EventRepository {
   saveEvent(tenantId: string, deviceId: string, type: EventType, payload: any): Event {

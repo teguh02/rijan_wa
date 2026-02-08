@@ -1,9 +1,9 @@
 import { FastifyInstance } from 'fastify';
-import { verifyMasterKey } from '../../middlewares/auth';
-import { generateTenantApiKey, hashApiKey, generateId } from '../../utils/crypto';
-import { TenantRepository, AuditLogRepository, DeviceRepository } from '../../storage/repositories';
-import { AppError, ErrorCode, StandardResponse } from '../../types';
-import { deviceManager } from '../../baileys/device-manager';
+import { verifyMasterKey } from '../../middlewares/auth.js';
+import { generateTenantApiKey, hashApiKey, generateId } from '../../utils/crypto.js';
+import { TenantRepository, AuditLogRepository, DeviceRepository } from '../../storage/repositories.js';
+import { AppError, ErrorCode, StandardResponse } from '../../types/index.js';
+import { deviceManager } from '../../baileys/device-manager.js';
 
 const tenantRepo = new TenantRepository();
 const auditRepo = new AuditLogRepository();
@@ -67,7 +67,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
     },
   }, async (request, reply) => {
     const { name } = request.body;
-    
+
     // Generate tenant ID dan API key
     const tenantId = generateId('tenant');
     const apiKey = generateTenantApiKey(tenantId);
@@ -153,7 +153,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
     },
   }, async (request, reply) => {
     const { limit = 50, offset = 0 } = request.query as { limit?: number; offset?: number };
-    
+
     const tenants = tenantRepo.findAll(limit, offset);
 
     const response: StandardResponse = {
@@ -190,7 +190,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    
+
     const tenant = tenantRepo.findById(id);
     if (!tenant) {
       throw new AppError(ErrorCode.NOT_FOUND, 'Tenant not found', 404);
@@ -229,7 +229,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    
+
     const updated = tenantRepo.updateStatus(id, 'suspended');
     if (!updated) {
       throw new AppError(ErrorCode.NOT_FOUND, 'Tenant not found', 404);
@@ -270,7 +270,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    
+
     const updated = tenantRepo.updateStatus(id, 'active');
     if (!updated) {
       throw new AppError(ErrorCode.NOT_FOUND, 'Tenant not found', 404);
@@ -311,7 +311,7 @@ export async function registerAdminRoutes(server: FastifyInstance): Promise<void
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    
+
     const deleted = tenantRepo.delete(id);
     if (!deleted) {
       throw new AppError(ErrorCode.NOT_FOUND, 'Tenant not found', 404);

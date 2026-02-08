@@ -1,6 +1,6 @@
 // Avoid static type import from ESM Baileys
 type WASocket = any;
-import { MessageRepository, OutboxMessage } from './repository';
+import { MessageRepository, OutboxMessage } from './repository.js';
 import {
   MessageType,
   MessageStatus,
@@ -10,9 +10,9 @@ import {
   SendContactMessageRequest,
   SendReactionMessageRequest,
   DeleteMessageRequest,
-} from './types';
-import { deviceManager } from '../../baileys/device-manager';
-import logger from '../../utils/logger';
+} from './types.js';
+import { deviceManager } from '../../baileys/device-manager.js';
+import logger from '../../utils/logger.js';
 import axios from 'axios';
 import { URL } from 'url';
 

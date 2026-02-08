@@ -6,8 +6,8 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { wsManager } from '../../utils/ws-manager';
-import logger from '../../utils/logger';
+import { wsManager } from '../../utils/ws-manager.js';
+import logger from '../../utils/logger.js';
 
 interface WSQuery {
     token?: string;
@@ -49,8 +49,8 @@ export async function websocketRoutes(server: FastifyInstance): Promise<void> {
 
         try {
             // Validate the token against tenant repository
-            const { TenantRepository, DeviceRepository } = await import('../../storage/repositories');
-            const { hashApiKey } = await import('../../utils/crypto');
+            const { TenantRepository, DeviceRepository } = await import('../../storage/repositories.js');
+            const { hashApiKey } = await import('../../utils/crypto.js');
 
             // Token format: tenant_xxx.timestamp.expiry.hash.signature
             const [tenantId] = tokenValue.split('.');

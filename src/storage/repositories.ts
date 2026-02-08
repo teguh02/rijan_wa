@@ -1,6 +1,6 @@
-import { getDatabase } from './database';
-import { generateId } from '../utils/crypto';
-import logger from '../utils/logger';
+import { getDatabase } from './database.js';
+import { generateId } from '../utils/crypto.js';
+import logger from '../utils/logger.js';
 
 export interface Tenant {
   id: string;

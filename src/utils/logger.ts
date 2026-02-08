@@ -2,7 +2,7 @@ import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
 import { PassThrough, Transform, Writable } from 'stream';
-import config from '../config';
+import config from '../config/index.js';
 
 /**
  * Laravel-like log format:

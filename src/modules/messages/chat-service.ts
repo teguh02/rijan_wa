@@ -1,10 +1,10 @@
 // Avoid static type import from ESM Baileys
 type WASocket = any;
-import { deviceManager } from '../../baileys/device-manager';
-import { Chat, Message } from './types';
-import { MessageRepository } from './repository';
-import { ChatRepository } from '../../storage/repositories';
-import logger from '../../utils/logger';
+import { deviceManager } from '../../baileys/device-manager.js';
+import { Chat, Message } from './types.js';
+import { MessageRepository } from './repository.js';
+import { ChatRepository } from '../../storage/repositories.js';
+import logger from '../../utils/logger.js';
 
 export class ChatService {
   private messageRepo = new MessageRepository();

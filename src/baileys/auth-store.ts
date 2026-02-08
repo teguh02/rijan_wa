@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import logger from '../utils/logger';
+import logger from '../utils/logger.js';
 
 // Use 'any' for AuthenticationState to avoid ESM import issues
 // The actual structure comes from Baileys useMultiFileAuthState at runtime

@@ -1,11 +1,11 @@
 import { FastifyPluginAsync } from 'fastify';
-import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
-import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
-import { messageService } from '../../modules/messages/service';
-import { chatService } from '../../modules/messages/chat-service';
-import { BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, TOO_MANY_REQUESTS } from '../../utils/http-errors';
-import { requireDeviceConnected, validateJidInBody } from '../../middlewares/message-validation';
-import { checkMessageRateLimit } from '../../utils/rate-limit';
+import { verifyTenantApiKey } from '../../middlewares/tenant-auth.js';
+import { verifyDeviceOwnership } from '../../middlewares/device-ownership.js';
+import { messageService } from '../../modules/messages/service.js';
+import { chatService } from '../../modules/messages/chat-service.js';
+import { BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, TOO_MANY_REQUESTS } from '../../utils/http-errors.js';
+import { requireDeviceConnected, validateJidInBody } from '../../middlewares/message-validation.js';
+import { checkMessageRateLimit } from '../../utils/rate-limit.js';
 import type {
   SendTextMessageRequest,
   SendMediaMessageRequest,
@@ -13,7 +13,7 @@ import type {
   SendContactMessageRequest,
   SendReactionMessageRequest,
   SendPollMessageRequest,
-} from '../../modules/messages/types';
+} from '../../modules/messages/types.js';
 
 interface MessageParams {
   deviceId: string;

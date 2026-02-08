@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import axios from 'axios';
-import { webhookRepository } from './repository';
-import logger from '../../utils/logger';
-import type { Webhook, WebhookPayload, WebhookEvent } from './types';
+import { webhookRepository } from './repository.js';
+import logger from '../../utils/logger.js';
+import type { Webhook, WebhookPayload, WebhookEvent } from './types.js';
 
 const WEBHOOK_TIMEOUT = 5000;
 const MAX_RETRIES = 3;
@@ -54,7 +54,7 @@ export class WebhookService {
    */
   private async deliverWithRetry(webhook: Webhook, payload: WebhookPayload, attempt: number = 0): Promise<void> {
     const signature = WebhookService.signPayload(payload, webhook.secret);
-    
+
     try {
       const response = await axios.post(webhook.url, payload, {
         timeout: webhook.timeout || WEBHOOK_TIMEOUT,

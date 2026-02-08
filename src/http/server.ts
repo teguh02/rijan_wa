@@ -6,12 +6,12 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyWebsocket from '@fastify/websocket';
-import config from '../config';
-import logger from '../utils/logger';
-import { errorHandler, requestLogger } from '../middlewares/error-handler';
-import { runMigrations } from '../storage/migrate';
-import { closeDatabase } from '../storage/database';
-import { initSentry, flushSentry } from '../utils/sentry';
+import config from '../config/index.js';
+import logger from '../utils/logger.js';
+import { errorHandler, requestLogger } from '../middlewares/error-handler.js';
+import { runMigrations } from '../storage/migrate.js';
+import { closeDatabase } from '../storage/database.js';
+import { initSentry, flushSentry } from '../utils/sentry.js';
 // media routes imported dynamically to avoid TS resolution issues
 
 export async function createServer(): Promise<FastifyInstance<any, any, any, any>> {
@@ -143,17 +143,17 @@ export async function startServer(): Promise<void> {
     const server = await createServer();
 
     // Register routes
-    const { registerAdminRoutes } = await import('./routes/admin');
-    const { registerDeviceRoutes } = await import('./routes/devices');
-    const { messagesRoutes } = await import('./routes/messages');
-    const { healthRoutes } = await import('./routes/health');
-    const { webhooksRoutes } = await import('./routes/webhooks');
-    const { eventsRoutes } = await import('./routes/events');
-    const { groupsRoutes } = await import('./routes/groups');
-    const { privacyRoutes } = await import('./routes/privacy');
+    const { registerAdminRoutes } = await import('./routes/admin.js');
+    const { registerDeviceRoutes } = await import('./routes/devices.js');
+    const { messagesRoutes } = await import('./routes/messages.js');
+    const { healthRoutes } = await import('./routes/health.js');
+    const { webhooksRoutes } = await import('./routes/webhooks.js');
+    const { eventsRoutes } = await import('./routes/events.js');
+    const { groupsRoutes } = await import('./routes/groups.js');
+    const { privacyRoutes } = await import('./routes/privacy.js');
 
     // @ts-ignore: Module resolves at runtime; TS type declarations not required
-    const { mediaRoutes } = await import('./routes/media');
+    const { mediaRoutes } = await import('./routes/media.js');
 
     // Register health routes FIRST (public, no auth required)
     await server.register(healthRoutes);
@@ -171,7 +171,7 @@ export async function startServer(): Promise<void> {
     await server.register(privacyRoutes, { prefix: '/v1/devices/:deviceId/privacy' });
 
     // WebSocket routes for real-time updates
-    const { websocketRoutes } = await import('./routes/websocket');
+    const { websocketRoutes } = await import('./routes/websocket.js');
     await server.register(websocketRoutes, { prefix: '/v1/devices' });
 
     await server.listen({
@@ -183,17 +183,17 @@ export async function startServer(): Promise<void> {
     logger.info(`OpenAPI docs available at http://localhost:${config.server.port}/docs`);
 
     // Start background jobs
-    const { messageProcessor } = await import('../jobs/message-processor');
+    const { messageProcessor } = await import('../jobs/message-processor.js');
     messageProcessor.start();
 
-    const { inboundMessageMonitor } = await import('../jobs/inbound-message-monitor');
+    const { inboundMessageMonitor } = await import('../jobs/inbound-message-monitor.js');
     inboundMessageMonitor.start(1000);
 
-    const { connectionMonitor } = await import('../jobs/connection-monitor');
+    const { connectionMonitor } = await import('../jobs/connection-monitor.js');
     connectionMonitor.start(3000);
 
     // Recover devices from previous session
-    const { deviceManager } = await import('../baileys/device-manager');
+    const { deviceManager } = await import('../baileys/device-manager.js');
     logger.info('Starting device recovery...');
     await deviceManager.recoverDevices();
     logger.info('Device recovery completed');
@@ -208,21 +208,21 @@ export async function startServer(): Promise<void> {
 
         // Stop background jobs
         try {
-          const { messageProcessor } = await import('../jobs/message-processor');
+          const { messageProcessor } = await import('../jobs/message-processor.js');
           messageProcessor.stop();
         } catch (error) {
           logger.warn({ error }, 'Failed to stop message processor');
         }
 
         try {
-          const { inboundMessageMonitor } = await import('../jobs/inbound-message-monitor');
+          const { inboundMessageMonitor } = await import('../jobs/inbound-message-monitor.js');
           inboundMessageMonitor.stop();
         } catch (error) {
           logger.warn({ error }, 'Failed to stop inbound message monitor');
         }
 
         try {
-          const { connectionMonitor } = await import('../jobs/connection-monitor');
+          const { connectionMonitor } = await import('../jobs/connection-monitor.js');
           connectionMonitor.stop();
         } catch (error) {
           logger.warn({ error }, 'Failed to stop connection monitor');
@@ -230,7 +230,7 @@ export async function startServer(): Promise<void> {
 
         // Release device locks
         try {
-          const { DistributedLock } = await import('../utils/distributed-lock');
+          const { DistributedLock } = await import('../utils/distributed-lock.js');
           const lock = new DistributedLock(config.instanceId);
           lock.cleanupExpiredLocks();
           logger.info('Device locks cleaned up');

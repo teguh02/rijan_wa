@@ -1,4 +1,4 @@
-import { startServer } from './http/server';
+import { startServer } from './http/server.js';
 
 // Start the server
 startServer().catch((error) => {

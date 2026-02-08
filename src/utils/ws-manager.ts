@@ -3,7 +3,7 @@
  * Manages WebSocket connections per device and broadcasts events to subscribed clients
  */
 
-import logger from './logger';
+import logger from './logger.js';
 import type { WebSocket } from 'ws';
 
 export interface WSMessage {

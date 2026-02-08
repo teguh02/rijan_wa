@@ -13,13 +13,13 @@ async function getBaileysLib() {
 }
 
 import QRCode from 'qrcode';
-import { BaileysAuthStore, useDatabaseAuthState } from './auth-store';
-import { DeviceStatus, DeviceState, PairingMethod, DeviceConnectionInfo } from './types';
-import { ChatRepository, DeviceRepository } from '../storage/repositories';
-import logger from '../utils/logger';
-import { DistributedLock } from '../utils/distributed-lock';
-import config from '../config';
-import { isProtocolTapEnabled, ProtocolTapBuffer, type ProtocolTapItem } from './protocol-tap';
+import { BaileysAuthStore, useDatabaseAuthState } from './auth-store.js';
+import { DeviceStatus, DeviceState, PairingMethod, DeviceConnectionInfo } from './types.js';
+import { ChatRepository, DeviceRepository } from '../storage/repositories.js';
+import logger from '../utils/logger.js';
+import { DistributedLock } from '../utils/distributed-lock.js';
+import config from '../config/index.js';
+import { isProtocolTapEnabled, ProtocolTapBuffer, type ProtocolTapItem } from './protocol-tap.js';
 // import crypto from 'crypto';
 
 const PROTOCOL_TAP_ENABLED = isProtocolTapEnabled();
@@ -573,7 +573,7 @@ export class DeviceManager {
         // ✅ FIX: Process contacts for LID mapping with v7 Contact type structure
         // In v7, Contact has: id (preferred), phoneNumber (if id is LID), lid (if id is PN)
         if (contacts && contacts.length > 0) {
-          const { LidPhoneRepository } = await import('../storage/repositories');
+          const { LidPhoneRepository } = await import('../storage/repositories.js');
           const lidRepo = new LidPhoneRepository();
           const updates: any[] = [];
 
@@ -635,7 +635,7 @@ export class DeviceManager {
         this.chatRepo.markChatsEvent(tenantId, deviceId, 'upsert');
 
         // Broadcast to WebSocket clients
-        const { broadcastChatEvent } = await import('../http/routes/websocket');
+        const { broadcastChatEvent } = await import('../http/routes/websocket.js');
         broadcastChatEvent(deviceId, 'upsert', dbChats);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.upsert');
@@ -645,7 +645,7 @@ export class DeviceManager {
     // LID Mapping Update
     socket.ev.on('lid-mapping.update', async (update: any) => {
       try {
-        const { LidPhoneRepository } = await import('../storage/repositories');
+        const { LidPhoneRepository } = await import('../storage/repositories.js');
         const lidRepo = new LidPhoneRepository();
 
         // Structure is typically { mapping: { [lid: string]: string } } or just the map
@@ -672,7 +672,7 @@ export class DeviceManager {
     // Contacts Upsert/Update - ✅ FIX: Updated for v7 Contact type structure
     const handleContactsUpdate = async (contacts: any[]) => {
       try {
-        const { LidPhoneRepository } = await import('../storage/repositories');
+        const { LidPhoneRepository } = await import('../storage/repositories.js');
         const lidRepo = new LidPhoneRepository();
         const updates: any[] = [];
 
@@ -760,7 +760,7 @@ export class DeviceManager {
 
         // Trigger webhooks
         try {
-          const { webhookService } = await import('../modules/webhooks/service');
+          const { webhookService } = await import('../modules/webhooks/service.js');
           await webhookService.queueDelivery({
             id: `device-connected-${deviceId}-${Date.now()}`,
             eventType: 'device.connected',
@@ -798,7 +798,7 @@ export class DeviceManager {
 
           // Trigger webhooks
           try {
-            const { webhookService } = await import('../modules/webhooks/service');
+            const { webhookService } = await import('../modules/webhooks/service.js');
             await webhookService.queueDelivery({
               id: `device-disconnected-${deviceId}-${Date.now()}`,
               eventType: 'device.disconnected',
@@ -836,8 +836,8 @@ export class DeviceManager {
     // Messages (incoming)
     socket.ev.on('messages.upsert', async (m: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
-        const { webhookService } = await import('../modules/webhooks/service');
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { webhookService } = await import('../modules/webhooks/service.js');
 
         const inferInboxType = (message: any): string => {
           if (!message) return 'text';
@@ -884,7 +884,7 @@ export class DeviceManager {
             // Store @lid -> phone mapping for future lookups
             if (remoteJidRaw.endsWith('@lid') && phoneNumberJid) {
               try {
-                const db = (await import('../storage/database')).getDatabase();
+                const db = (await import('../storage/database.js')).getDatabase();
                 const now = Math.floor(Date.now() / 1000);
                 const stmt = db.prepare(`
                   INSERT INTO lid_phone_map (lid, phone_jid, device_id, tenant_id, name, created_at, updated_at)
@@ -935,7 +935,7 @@ export class DeviceManager {
             });
 
             // Broadcast to WebSocket clients
-            const { broadcastMessageEvent } = await import('../http/routes/websocket');
+            const { broadcastMessageEvent } = await import('../http/routes/websocket.js');
             broadcastMessageEvent(deviceId, {
               ...inboxPayload,
               remoteJidRaw,
@@ -951,8 +951,8 @@ export class DeviceManager {
     // Message updates (edits, acks)
     socket.ev.on('messages.update', async (updates: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
-        const { webhookService } = await import('../modules/webhooks/service');
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { webhookService } = await import('../modules/webhooks/service.js');
 
         for (const update of updates) {
           eventRepository.saveEvent(instance.state.tenantId, deviceId, 'messages.update', update);
@@ -984,8 +984,8 @@ export class DeviceManager {
     // Message receipts (delivery/read)
     socket.ev.on('message-receipt.update', async (updates: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
-        const { webhookService } = await import('../modules/webhooks/service');
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { webhookService } = await import('../modules/webhooks/service.js');
 
         eventRepository.saveEvent(instance.state.tenantId, deviceId, 'message-receipt.update', updates);
 
@@ -1006,8 +1006,8 @@ export class DeviceManager {
     // Group updates
     socket.ev.on('groups.update', async (updates: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
-        const { webhookService } = await import('../modules/webhooks/service');
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { webhookService } = await import('../modules/webhooks/service.js');
 
         for (const update of updates) {
           eventRepository.saveEvent(instance.state.tenantId, deviceId, 'groups.update', update);
@@ -1029,8 +1029,8 @@ export class DeviceManager {
     // Group participant updates
     socket.ev.on('group-participants.update', async (update: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
-        const { webhookService } = await import('../modules/webhooks/service');
+        const { eventRepository } = await import('../modules/events/repository.js');
+        const { webhookService } = await import('../modules/webhooks/service.js');
 
         eventRepository.saveEvent(instance.state.tenantId, deviceId, 'group-participants.update', update);
 
@@ -1054,9 +1054,9 @@ export class DeviceManager {
     // Contact updates
     socket.ev.on('contacts.update', async (updates: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
+        const { eventRepository } = await import('../modules/events/repository.js');
         // Import dynamically to avoid circular dependencies if any, though repositories.ts is usually safe
-        const { LidPhoneRepository } = await import('../storage/repositories');
+        const { LidPhoneRepository } = await import('../storage/repositories.js');
         const lidPhoneRepo = new LidPhoneRepository();
 
         const mappingsToStore: Array<{ lid: string; phoneJid: string; name?: string | null }> = [];
@@ -1101,7 +1101,7 @@ export class DeviceManager {
     // LID to Phone Number mapping updates (Baileys v7+)
     socket.ev.on('lid-mapping.update' as any, async (mappings: Array<{ lid: string; pn: string }>) => {
       try {
-        const { LidPhoneRepository } = await import('../storage/repositories');
+        const { LidPhoneRepository } = await import('../storage/repositories.js');
         const lidPhoneRepo = new LidPhoneRepository();
 
         logger.info({ deviceId, count: mappings?.length || 0 }, 'Received lid-mapping.update');
@@ -1137,7 +1137,7 @@ export class DeviceManager {
     // Chat updates
     socket.ev.on('chats.update', async (updates: any) => {
       try {
-        const { eventRepository } = await import('../modules/events/repository');
+        const { eventRepository } = await import('../modules/events/repository.js');
 
         const updateList = updates || [];
 
@@ -1156,7 +1156,7 @@ export class DeviceManager {
         this.chatRepo.markChatsEvent(tenantId, deviceId, 'update');
 
         // Broadcast to WebSocket clients
-        const { broadcastChatEvent } = await import('../http/routes/websocket');
+        const { broadcastChatEvent } = await import('../http/routes/websocket.js');
         broadcastChatEvent(deviceId, 'update', dbChats);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.update');
@@ -1180,7 +1180,7 @@ export class DeviceManager {
         this.chatRepo.markChatsEvent(tenantId, deviceId, 'delete');
 
         // Broadcast to WebSocket clients
-        const { broadcastChatEvent } = await import('../http/routes/websocket');
+        const { broadcastChatEvent } = await import('../http/routes/websocket.js');
         broadcastChatEvent(deviceId, 'delete', jids);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.delete');
@@ -1240,7 +1240,7 @@ export class DeviceManager {
   async recoverDevices(): Promise<void> {
     logger.info('Recovering devices from previous session...');
 
-    const db = (await import('../storage/database')).getDatabase();
+    const db = (await import('../storage/database.js')).getDatabase();
     const stmt = db.prepare(`
       SELECT d.id, d.tenant_id, d.status
       FROM devices d
@@ -1277,7 +1277,7 @@ export class DeviceManager {
       const identity = await this.authStore.getCredsIdentity(tenantId, deviceId);
       const sessionDir = this.authStore.resolveSessionDir(tenantId, deviceId);
 
-      const db = (await import('../storage/database')).getDatabase();
+      const db = (await import('../storage/database.js')).getDatabase();
       const now = Math.floor(Date.now() / 1000);
 
       const stmt = db.prepare(`

@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
-import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
-import { eventRepository } from '../../modules/events/repository';
-import { BAD_REQUEST } from '../../utils/http-errors';
+import { verifyTenantApiKey } from '../../middlewares/tenant-auth.js';
+import { verifyDeviceOwnership } from '../../middlewares/device-ownership.js';
+import { eventRepository } from '../../modules/events/repository.js';
+import { BAD_REQUEST } from '../../utils/http-errors.js';
 
 export const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   // Auth

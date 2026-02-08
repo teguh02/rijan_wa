@@ -1,9 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
-import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
-import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
-import { deviceManager } from '../../baileys/device-manager';
-import { NOT_FOUND, INTERNAL_SERVER_ERROR } from '../../utils/http-errors';
-import { logAudit } from '../../utils/audit';
+import { verifyTenantApiKey } from '../../middlewares/tenant-auth.js';
+import { verifyDeviceOwnership } from '../../middlewares/device-ownership.js';
+import { deviceManager } from '../../baileys/device-manager.js';
+import { NOT_FOUND, INTERNAL_SERVER_ERROR } from '../../utils/http-errors.js';
+import { logAudit } from '../../utils/audit.js';
 
 export const privacyRoutes: FastifyPluginAsync = async (fastify) => {
   // Auth

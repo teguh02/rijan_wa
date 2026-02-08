@@ -1,6 +1,6 @@
-import { getDatabase } from '../../storage/database';
-import { generateId } from '../../utils/crypto';
-import { MessageType, MessageStatus } from './types';
+import { getDatabase } from '../../storage/database.js';
+import { generateId } from '../../utils/crypto.js';
+import { MessageType, MessageStatus } from './types.js';
 
 export interface OutboxMessage {
   id: string;

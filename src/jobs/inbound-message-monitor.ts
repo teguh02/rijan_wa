@@ -1,6 +1,6 @@
-import logger from '../utils/logger';
-import { getDatabase } from '../storage/database';
-import { eventRepository } from '../modules/events/repository';
+import logger from '../utils/logger.js';
+import { getDatabase } from '../storage/database.js';
+import { eventRepository } from '../modules/events/repository.js';
 
 /**
  * InboundMessageMonitor
@@ -133,7 +133,7 @@ export class InboundMessageMonitor {
 
           // Trigger webhook for backfilled inbound message (best-effort)
           try {
-            const { webhookService } = await import('../modules/webhooks/service');
+            const { webhookService } = await import('../modules/webhooks/service.js');
             await webhookService.queueDelivery({
               id: messageId,
               eventType: 'message.received',

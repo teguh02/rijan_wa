@@ -1,6 +1,6 @@
-import logger from '../utils/logger';
-import { getDatabase } from '../storage/database';
-import { deviceManager } from '../baileys/device-manager';
+import logger from '../utils/logger.js';
+import { getDatabase } from '../storage/database.js';
+import { deviceManager } from '../baileys/device-manager.js';
 
 /**
  * ConnectionMonitor
@@ -72,7 +72,7 @@ export class ConnectionMonitor {
           if (now - last > 30_000) {
             this.lastNotifiedAt.set(deviceId, now);
             try {
-              const { webhookService } = await import('../modules/webhooks/service');
+              const { webhookService } = await import('../modules/webhooks/service.js');
               await webhookService.queueDelivery({
                 id: `device-disconnected-monitor-${deviceId}-${now}`,
                 eventType: 'device.disconnected',

@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { AppError, ErrorCode, StandardResponse } from '../types';
-import logger from '../utils/logger';
+import { AppError, ErrorCode, StandardResponse } from '../types/index.js';
+import logger from '../utils/logger.js';
 import crypto from 'crypto';
-import { captureException, isSentryEnabled } from '../utils/sentry';
+import { captureException, isSentryEnabled } from '../utils/sentry.js';
 
 /**
  * Request ID generator dan logger middleware

@@ -1,9 +1,9 @@
 import { FastifyInstance } from 'fastify';
-import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
-import { verifyDeviceOwnership } from '../../middlewares/device-ownership';
-import { deviceManager } from '../../baileys/device-manager';
-import { ChatRepository, DeviceRepository, AuditLogRepository, DeviceSessionRepository } from '../../storage/repositories';
-import { AppError, ErrorCode, StandardResponse } from '../../types';
+import { verifyTenantApiKey } from '../../middlewares/tenant-auth.js';
+import { verifyDeviceOwnership } from '../../middlewares/device-ownership.js';
+import { deviceManager } from '../../baileys/device-manager.js';
+import { ChatRepository, DeviceRepository, AuditLogRepository, DeviceSessionRepository } from '../../storage/repositories.js';
+import { AppError, ErrorCode, StandardResponse } from '../../types/index.js';
 
 const deviceRepo = new DeviceRepository();
 const auditRepo = new AuditLogRepository();
@@ -724,14 +724,14 @@ export async function registerDeviceRoutes(server: FastifyInstance): Promise<voi
         has_session: !!session,
         session: session
           ? {
-              device_id: session.device_id,
-              tenant_id: session.tenant_id || tenantId,
-              session_kind: session.session_kind || 'baileys_multifile',
-              session_dir: session.session_dir || '',
-              wa_jid: session.wa_jid || '',
-              wa_name: session.wa_name || '',
-              updated_at: session.updated_at,
-            }
+            device_id: session.device_id,
+            tenant_id: session.tenant_id || tenantId,
+            session_kind: session.session_kind || 'baileys_multifile',
+            session_dir: session.session_dir || '',
+            wa_jid: session.wa_jid || '',
+            wa_name: session.wa_name || '',
+            updated_at: session.updated_at,
+          }
           : null,
       },
       requestId: request.requestId,

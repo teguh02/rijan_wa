@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import { verifyTenantApiKey } from '../../middlewares/tenant-auth';
-import { webhookRepository } from '../../modules/webhooks/repository';
-import { BAD_REQUEST, NOT_FOUND } from '../../utils/http-errors';
-import type { CreateWebhookRequest, UpdateWebhookRequest } from '../../modules/webhooks/types';
+import { verifyTenantApiKey } from '../../middlewares/tenant-auth.js';
+import { webhookRepository } from '../../modules/webhooks/repository.js';
+import { BAD_REQUEST, NOT_FOUND } from '../../utils/http-errors.js';
+import type { CreateWebhookRequest, UpdateWebhookRequest } from '../../modules/webhooks/types.js';
 
 export const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   // Auth

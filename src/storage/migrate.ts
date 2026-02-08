@@ -1,5 +1,5 @@
-import { getDatabase } from './database';
-import logger from '../utils/logger';
+import { getDatabase } from './database.js';
+import logger from '../utils/logger.js';
 
 const migrations = [
   {

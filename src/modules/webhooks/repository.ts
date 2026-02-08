@@ -1,6 +1,6 @@
-import { getDatabase } from '../../storage/database';
-import { generateId } from '../../utils/crypto';
-import type { Webhook, WebhookLog, DLQEntry, CreateWebhookRequest, UpdateWebhookRequest } from './types';
+import { getDatabase } from '../../storage/database.js';
+import { generateId } from '../../utils/crypto.js';
+import type { Webhook, WebhookLog, DLQEntry, CreateWebhookRequest, UpdateWebhookRequest } from './types.js';
 
 export class WebhookRepository {
   create(tenantId: string, req: CreateWebhookRequest): Webhook {

@@ -1,7 +1,7 @@
-import logger from '../utils/logger';
-import { MessageRepository, OutboxMessage } from '../modules/messages/repository';
-import { MessageService } from '../modules/messages/service';
-import { MessageStatus, MessageType, SendTextMessageRequest, SendMediaMessageRequest, SendLocationMessageRequest, SendContactMessageRequest, SendReactionMessageRequest } from '../modules/messages/types';
+import logger from '../utils/logger.js';
+import { MessageRepository, OutboxMessage } from '../modules/messages/repository.js';
+import { MessageService } from '../modules/messages/service.js';
+import { MessageStatus, MessageType, SendTextMessageRequest, SendMediaMessageRequest, SendLocationMessageRequest, SendContactMessageRequest, SendReactionMessageRequest } from '../modules/messages/types.js';
 
 export class MessageProcessor {
   private repo = new MessageRepository();
