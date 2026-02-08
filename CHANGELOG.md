@@ -28,6 +28,14 @@ All notable changes to this project will be documented in this file.
   - Solution: Full project migration to ESM module system
 - ✅ Fixed `ReferenceError: require is not defined in ES module scope` in `migrate.ts`
 
+### 🔌 WebSocket
+
+- ✅ **WebSocket now supports `Authorization` header** (preferred method)
+  - Use `Authorization: Bearer <TENANT_API_KEY>` header
+  - Query param `?token=xxx` still supported as fallback
+  - Endpoint: `wss://host/v1/devices/:deviceId/chat-ws`
+
+
 ## [1.4.2] - 2026-02-07
 
 

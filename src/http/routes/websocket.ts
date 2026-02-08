@@ -2,7 +2,8 @@
  * WebSocket Route Handler
  * Provides real-time chat and message updates via WebSocket
  * 
- * Endpoint: /v1/devices/:deviceId/chat-ws?token=Bearer_xxx
+ * Endpoint: /v1/devices/:deviceId/chat-ws
+ * Auth: Authorization header (Bearer xxx) or query param (?token=xxx)
  */
 
 import { FastifyInstance } from 'fastify';
@@ -24,28 +25,33 @@ export async function websocketRoutes(server: FastifyInstance): Promise<void> {
         Querystring: WSQuery;
     }>('/:deviceId/chat-ws', { websocket: true }, async (connection, req) => {
         const { deviceId } = req.params;
-        const { token } = req.query;
 
-        logger.debug({ deviceId, hasToken: !!token }, 'WebSocket connection attempt');
+        // Support both Authorization header and query param (header takes priority)
+        const authHeader = req.headers['authorization'] as string | undefined;
+        const { token: queryToken } = req.query;
+        const rawToken = authHeader || queryToken;
+
+        logger.debug({ deviceId, hasToken: !!rawToken, source: authHeader ? 'header' : 'query' }, 'WebSocket connection attempt');
 
         // Validate token
-        if (!token) {
+        if (!rawToken) {
             logger.warn({ deviceId }, 'WebSocket connection rejected: missing token');
             connection.send(JSON.stringify({
                 type: 'error',
                 code: 'UNAUTHORIZED',
-                message: 'Missing authentication token',
+                message: 'Missing authentication token. Use Authorization header or ?token query param',
             }));
             connection.close(4001, 'Unauthorized');
             return;
         }
 
-        // Parse bearer token
-        const tokenValue = token.startsWith('Bearer_')
-            ? token.substring(7)
-            : token.startsWith('Bearer ')
-                ? token.substring(7)
-                : token;
+        // Parse bearer token (support: "Bearer xxx", "Bearer_xxx", or just "xxx")
+        const tokenValue = rawToken.startsWith('Bearer ')
+            ? rawToken.substring(7)
+            : rawToken.startsWith('Bearer_')
+                ? rawToken.substring(7)
+                : rawToken;
+
 
         try {
             // Validate the token against tenant repository
