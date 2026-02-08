@@ -94,6 +94,23 @@ export async function websocketRoutes(server: FastifyInstance): Promise<void> {
                 tenantId: tenant?.id || tenantId
             }, 'WebSocket connection authenticated');
 
+            // Send initial chat list (limit 50 by default)
+            try {
+                const { ChatService } = await import('../../modules/messages/chat-service.js');
+                const chatService = new ChatService();
+                const result = await chatService.getChats(deviceId, 50, 0);
+
+                connection.send(JSON.stringify({
+                    type: 'chats.set',
+                    deviceId,
+                    timestamp: Math.floor(Date.now() / 1000),
+                    data: result
+                }));
+            } catch (error) {
+                logger.error({ error, deviceId }, 'Failed to send initial chat list');
+                // Don't close connection, just log error
+            }
+
         } catch (error) {
             logger.warn({ error, deviceId }, 'WebSocket authentication failed');
             connection.send(JSON.stringify({

@@ -34,6 +34,9 @@ All notable changes to this project will be documented in this file.
   - Use `Authorization: Bearer <TENANT_API_KEY>` header
   - Query param `?token=xxx` still supported as fallback
   - Endpoint: `wss://host/v1/devices/:deviceId/chat-ws`
+- ✅ **WebSocket sends initial chat list** upon connection
+  - Event: `chats.set`
+  - Payload matches `GET /chats` response format (limit 50)
 
 
 ## [1.4.2] - 2026-02-07
