@@ -633,6 +633,10 @@ export class DeviceManager {
         const dbChats = chatList.map(mapChatForDb).filter(Boolean) as any;
         this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
         this.chatRepo.markChatsEvent(tenantId, deviceId, 'upsert');
+
+        // Broadcast to WebSocket clients
+        const { broadcastChatEvent } = await import('../http/routes/websocket');
+        broadcastChatEvent(deviceId, 'upsert', dbChats);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.upsert');
       }
@@ -929,6 +933,14 @@ export class DeviceManager {
               timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Math.floor(Date.now() / 1000),
               data: msg,
             });
+
+            // Broadcast to WebSocket clients
+            const { broadcastMessageEvent } = await import('../http/routes/websocket');
+            broadcastMessageEvent(deviceId, {
+              ...inboxPayload,
+              remoteJidRaw,
+              normalizedJid: jid,
+            });
           }
         }
       } catch (error) {
@@ -1142,6 +1154,10 @@ export class DeviceManager {
         const dbChats = updateList.map(mapChatForDb).filter(Boolean) as any;
         this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
         this.chatRepo.markChatsEvent(tenantId, deviceId, 'update');
+
+        // Broadcast to WebSocket clients
+        const { broadcastChatEvent } = await import('../http/routes/websocket');
+        broadcastChatEvent(deviceId, 'update', dbChats);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.update');
       }
@@ -1162,6 +1178,10 @@ export class DeviceManager {
 
         this.chatRepo.deleteMany(deviceId, jids);
         this.chatRepo.markChatsEvent(tenantId, deviceId, 'delete');
+
+        // Broadcast to WebSocket clients
+        const { broadcastChatEvent } = await import('../http/routes/websocket');
+        broadcastChatEvent(deviceId, 'delete', jids);
       } catch (error) {
         logger.error({ error, deviceId }, 'Failed to process chats.delete');
       }

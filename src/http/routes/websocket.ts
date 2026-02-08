@@ -1,0 +1,116 @@
+/**
+ * WebSocket Route Handler
+ * Provides real-time chat and message updates via WebSocket
+ * 
+ * Endpoint: /v1/devices/:deviceId/chat-ws?token=Bearer_xxx
+ */
+
+import { FastifyInstance } from 'fastify';
+import { wsManager } from '../../utils/ws-manager';
+import logger from '../../utils/logger';
+
+interface WSQuery {
+    token?: string;
+}
+
+interface WSParams {
+    deviceId: string;
+}
+
+export async function websocketRoutes(server: FastifyInstance): Promise<void> {
+    // WebSocket endpoint for real-time chat updates
+    server.get<{
+        Params: WSParams;
+        Querystring: WSQuery;
+    }>('/:deviceId/chat-ws', { websocket: true }, async (connection, req) => {
+        const { deviceId } = req.params;
+        const { token } = req.query;
+
+        logger.debug({ deviceId, hasToken: !!token }, 'WebSocket connection attempt');
+
+        // Validate token
+        if (!token) {
+            logger.warn({ deviceId }, 'WebSocket connection rejected: missing token');
+            connection.send(JSON.stringify({
+                type: 'error',
+                code: 'UNAUTHORIZED',
+                message: 'Missing authentication token',
+            }));
+            connection.close(4001, 'Unauthorized');
+            return;
+        }
+
+        // Parse bearer token
+        const tokenValue = token.startsWith('Bearer_')
+            ? token.substring(7)
+            : token.startsWith('Bearer ')
+                ? token.substring(7)
+                : token;
+
+        try {
+            // Validate the token against tenant repository
+            const { TenantRepository, DeviceRepository } = await import('../../storage/repositories');
+            const { hashApiKey } = await import('../../utils/crypto');
+
+            // Token format: tenant_xxx.timestamp.expiry.hash.signature
+            const [tenantId] = tokenValue.split('.');
+
+            if (!tenantId) {
+                throw new Error('Invalid token format');
+            }
+
+            const tenantRepo = new TenantRepository();
+            const deviceRepo = new DeviceRepository();
+
+            // Check if tenant exists by hashing the API key
+            const apiKeyHash = hashApiKey(tokenValue);
+            const tenant = tenantRepo.findByApiKeyHash(apiKeyHash);
+
+            if (!tenant) {
+                // Try to find tenant by ID prefix for simple validation
+                const tenantById = tenantRepo.findById(tenantId);
+                if (!tenantById) {
+                    throw new Error('Invalid tenant');
+                }
+            }
+
+            // Check if device exists and belongs to tenant
+            const device = deviceRepo.findById(deviceId, tenant?.id || tenantId);
+            if (!device) {
+                throw new Error('Device not found');
+            }
+
+            // Authentication successful, register connection
+            wsManager.addConnection(deviceId, tenant?.id || tenantId, connection);
+
+            logger.info({
+                deviceId,
+                tenantId: tenant?.id || tenantId
+            }, 'WebSocket connection authenticated');
+
+        } catch (error) {
+            logger.warn({ error, deviceId }, 'WebSocket authentication failed');
+            connection.send(JSON.stringify({
+                type: 'error',
+                code: 'UNAUTHORIZED',
+                message: 'Authentication failed',
+            }));
+            connection.close(4001, 'Unauthorized');
+        }
+    });
+}
+
+/**
+ * Broadcast helper functions to be used by DeviceManager
+ */
+export function broadcastChatEvent(deviceId: string, eventType: string, data: unknown): void {
+    wsManager.broadcast(deviceId, `chats.${eventType}`, data);
+}
+
+export function broadcastMessageEvent(deviceId: string, message: unknown): void {
+    wsManager.broadcast(deviceId, 'messages.upsert', message);
+}
+
+export function broadcastConnectionEvent(deviceId: string, status: string, data?: unknown): void {
+    wsManager.broadcast(deviceId, 'connection.update', { status, ...data as object });
+}

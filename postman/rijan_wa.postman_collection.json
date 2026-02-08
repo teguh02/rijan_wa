@@ -15,8 +15,12 @@
             "header": [],
             "url": {
               "raw": "{{BASE_URL}}/health",
-              "host": ["{{BASE_URL}}"],
-              "path": ["health"]
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           },
           "response": []
@@ -28,8 +32,12 @@
             "header": [],
             "url": {
               "raw": "{{BASE_URL}}/ready",
-              "host": ["{{BASE_URL}}"],
-              "path": ["ready"]
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "ready"
+              ]
             }
           },
           "response": []
@@ -41,8 +49,12 @@
             "header": [],
             "url": {
               "raw": "{{BASE_URL}}/metrics",
-              "host": ["{{BASE_URL}}"],
-              "path": ["metrics"]
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "metrics"
+              ]
             }
           },
           "response": []
@@ -105,8 +117,13 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants"
+                  ]
                 }
               },
               "response": []
@@ -124,8 +141,13 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants?limit=20&offset=0",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants"],
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants"
+                  ],
                   "query": [
                     {
                       "key": "limit",
@@ -153,8 +175,14 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants", "{{TENANT_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants",
+                    "{{TENANT_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -172,8 +200,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/suspend",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants", "{{TENANT_ID}}", "suspend"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants",
+                    "{{TENANT_ID}}",
+                    "suspend"
+                  ]
                 }
               },
               "response": []
@@ -191,8 +226,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/activate",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants", "{{TENANT_ID}}", "activate"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants",
+                    "{{TENANT_ID}}",
+                    "activate"
+                  ]
                 }
               },
               "response": []
@@ -210,8 +252,14 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants", "{{TENANT_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants",
+                    "{{TENANT_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -267,8 +315,15 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/devices",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants", "{{TENANT_ID}}", "devices"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants",
+                    "{{TENANT_ID}}",
+                    "devices"
+                  ]
                 }
               },
               "response": []
@@ -286,8 +341,16 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/admin/tenants/{{TENANT_ID}}/devices/{{DEVICE_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["admin", "tenants", "{{TENANT_ID}}", "devices", "{{DEVICE_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "tenants",
+                    "{{TENANT_ID}}",
+                    "devices",
+                    "{{DEVICE_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -315,8 +378,13 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices?limit=20&offset=0",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices"],
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices"
+                  ],
                   "query": [
                     {
                       "key": "limit",
@@ -344,8 +412,14 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/sessions?limit=20&offset=0",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "sessions"],
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "sessions"
+                  ],
                   "query": [
                     {
                       "key": "limit",
@@ -373,8 +447,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/session",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "session"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "session"
+                  ]
                 }
               },
               "response": []
@@ -392,8 +473,14 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -411,8 +498,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/health",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "health"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "health"
+                  ]
                 }
               },
               "response": []
@@ -430,8 +524,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/start",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "start"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "start"
+                  ]
                 }
               },
               "response": []
@@ -449,8 +550,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/stop",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "stop"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "stop"
+                  ]
                 }
               },
               "response": []
@@ -468,8 +576,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/logout",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "logout"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "logout"
+                  ]
                 }
               },
               "response": []
@@ -507,8 +622,16 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/pairing/qr",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "pairing", "qr"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "pairing",
+                    "qr"
+                  ]
                 }
               },
               "response": []
@@ -555,8 +678,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/pairing/code",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "pairing", "code"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "pairing",
+                    "code"
+                  ]
                 }
               },
               "response": []
@@ -630,8 +761,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/text",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "text"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "text"
+                  ]
                 }
               },
               "response": []
@@ -694,8 +833,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/media",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "media"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "media"
+                  ]
                 }
               },
               "response": []
@@ -739,8 +886,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/location",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "location"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "location"
+                  ]
                 }
               },
               "response": []
@@ -784,8 +939,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/contact",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "contact"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "contact"
+                  ]
                 }
               },
               "response": []
@@ -812,8 +975,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/reaction",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "reaction"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "reaction"
+                  ]
                 }
               },
               "response": []
@@ -831,8 +1002,16 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/{{MESSAGE_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "{{MESSAGE_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "{{MESSAGE_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -870,8 +1049,17 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/{{MESSAGE_ID}}/status",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "{{MESSAGE_ID}}", "status"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "{{MESSAGE_ID}}",
+                    "status"
+                  ]
                 }
               },
               "response": []
@@ -914,8 +1102,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/messages/poll",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "messages", "poll"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "messages",
+                    "poll"
+                  ]
                 }
               },
               "response": []
@@ -954,8 +1150,16 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/debug/chats-sync",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "debug", "chats-sync"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "debug",
+                    "chats-sync"
+                  ]
                 }
               },
               "response": []
@@ -995,8 +1199,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats?limit=20&offset=0",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats"],
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "chats"
+                  ],
                   "query": [
                     {
                       "key": "limit",
@@ -1024,8 +1235,17 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/messages?limit=20&before=",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "messages"],
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "chats",
+                    "{{JID}}",
+                    "messages"
+                  ],
                   "query": [
                     {
                       "key": "limit",
@@ -1053,8 +1273,17 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/mark-read",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "mark-read"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "chats",
+                    "{{JID}}",
+                    "mark-read"
+                  ]
                 }
               },
               "response": []
@@ -1081,8 +1310,17 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/archive",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "archive"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "chats",
+                    "{{JID}}",
+                    "archive"
+                  ]
                 }
               },
               "response": []
@@ -1109,8 +1347,17 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chats/{{JID}}/mute",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "chats", "{{JID}}", "mute"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "chats",
+                    "{{JID}}",
+                    "mute"
+                  ]
                 }
               },
               "response": []
@@ -1137,9 +1384,51 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/presence",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "presence"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "presence"
+                  ]
                 }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "WebSocket (Real-time)",
+          "description": "WebSocket endpoint for real-time chat and message updates. Use this instead of polling for better performance.",
+          "item": [
+            {
+              "name": "Chat WebSocket (Documentation)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "ws://{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/chat-ws?token=Bearer_{{TENANT_API_KEY}}",
+                  "protocol": "ws",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "chat-ws"
+                  ],
+                  "query": [
+                    {
+                      "key": "token",
+                      "value": "Bearer_{{TENANT_API_KEY}}",
+                      "description": "Authentication token (use Bearer_ prefix since WS headers are limited)"
+                    }
+                  ]
+                },
+                "description": "## WebSocket Real-time Chat Updates\n\n**Connection URL:**\n```\nws://host/v1/devices/:deviceId/chat-ws?token=Bearer_xxx\n```\n\n### Server → Client Events\n\n**chats.upsert** - New or updated chats:\n```json\n{\n  \"type\": \"chats.upsert\",\n  \"deviceId\": \"device_xxx\",\n  \"timestamp\": 1234567890,\n  \"data\": [{\"jid\": \"...\", \"name\": \"...\"}]\n}\n```\n\n**chats.update** - Chat metadata updates:\n```json\n{\n  \"type\": \"chats.update\",\n  \"deviceId\": \"device_xxx\",\n  \"timestamp\": 1234567890,\n  \"data\": [...]\n}\n```\n\n**chats.delete** - Deleted chats:\n```json\n{\n  \"type\": \"chats.delete\",\n  \"deviceId\": \"device_xxx\",\n  \"timestamp\": 1234567890,\n  \"data\": [\"jid1\", \"jid2\"]\n}\n```\n\n**messages.upsert** - New incoming messages:\n```json\n{\n  \"type\": \"messages.upsert\",\n  \"deviceId\": \"device_xxx\",\n  \"timestamp\": 1234567890,\n  \"data\": {\n    \"key\": {...},\n    \"message\": {...},\n    \"pushName\": \"...\"\n  }\n}\n```\n\n### Client → Server Messages\n\n**ping** - Keep-alive:\n```json\n{\"type\": \"ping\"}\n```\n\nServer responds with:\n```json\n{\"type\": \"pong\", \"timestamp\": ...}\n```\n\n### Testing with wscat\n```bash\nwscat -c \"ws://localhost:3000/v1/devices/YOUR_DEVICE_ID/chat-ws?token=Bearer_YOUR_API_KEY\"\n```"
               },
               "response": []
             }
@@ -1161,8 +1450,15 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/events?since={{SINCE}}&type={{EVENT_TYPE}}&limit=100",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "events"],
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "events"
+                  ],
                   "query": [
                     {
                       "key": "since",
@@ -1232,8 +1528,13 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "webhooks"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "webhooks"
+                  ]
                 }
               },
               "response": []
@@ -1251,8 +1552,13 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "webhooks"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "webhooks"
+                  ]
                 }
               },
               "response": []
@@ -1270,8 +1576,14 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "webhooks", "{{WEBHOOK_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "webhooks",
+                    "{{WEBHOOK_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -1298,8 +1610,14 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "webhooks", "{{WEBHOOK_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "webhooks",
+                    "{{WEBHOOK_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -1317,8 +1635,14 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/webhooks/{{WEBHOOK_ID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "webhooks", "{{WEBHOOK_ID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "webhooks",
+                    "{{WEBHOOK_ID}}"
+                  ]
                 }
               },
               "response": []
@@ -1370,8 +1694,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/create",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "create"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "groups",
+                    "create"
+                  ]
                 }
               },
               "response": []
@@ -1389,8 +1721,16 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/{{GROUP_JID}}",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "{{GROUP_JID}}"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "groups",
+                    "{{GROUP_JID}}"
+                  ]
                 }
               },
               "response": []
@@ -1417,8 +1757,18 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/{{GROUP_JID}}/participants/add",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "{{GROUP_JID}}", "participants", "add"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "groups",
+                    "{{GROUP_JID}}",
+                    "participants",
+                    "add"
+                  ]
                 }
               },
               "response": []
@@ -1445,8 +1795,18 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/groups/{{GROUP_JID}}/participants/remove",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "groups", "{{GROUP_JID}}", "participants", "remove"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "groups",
+                    "{{GROUP_JID}}",
+                    "participants",
+                    "remove"
+                  ]
                 }
               },
               "response": []
@@ -1469,8 +1829,16 @@
                 ],
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/privacy/settings",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "privacy", "settings"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "privacy",
+                    "settings"
+                  ]
                 }
               },
               "response": []
@@ -1497,8 +1865,16 @@
                 },
                 "url": {
                   "raw": "{{BASE_URL}}/v1/devices/{{DEVICE_ID}}/privacy/settings",
-                  "host": ["{{BASE_URL}}"],
-                  "path": ["v1", "devices", "{{DEVICE_ID}}", "privacy", "settings"]
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "devices",
+                    "{{DEVICE_ID}}",
+                    "privacy",
+                    "settings"
+                  ]
                 }
               },
               "response": []

@@ -5,6 +5,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import fastifyMultipart from '@fastify/multipart';
+import fastifyWebsocket from '@fastify/websocket';
 import config from '../config';
 import logger from '../utils/logger';
 import { errorHandler, requestLogger } from '../middlewares/error-handler';
@@ -37,6 +38,13 @@ export async function createServer(): Promise<FastifyInstance<any, any, any, any
     limits: {
       fileSize: 50 * 1024 * 1024, // 50MB
       files: 1,
+    },
+  });
+
+  // WebSocket support
+  await server.register(fastifyWebsocket, {
+    options: {
+      maxPayload: 1024 * 1024, // 1MB
     },
   });
 
@@ -161,6 +169,10 @@ export async function startServer(): Promise<void> {
     await server.register(eventsRoutes, { prefix: '/v1/devices/:deviceId/events' });
     await server.register(groupsRoutes, { prefix: '/v1/devices/:deviceId/groups' });
     await server.register(privacyRoutes, { prefix: '/v1/devices/:deviceId/privacy' });
+
+    // WebSocket routes for real-time updates
+    const { websocketRoutes } = await import('./routes/websocket');
+    await server.register(websocketRoutes, { prefix: '/v1/devices' });
 
     await server.listen({
       port: config.server.port,
