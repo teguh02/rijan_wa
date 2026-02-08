@@ -556,20 +556,50 @@ export class DeviceManager {
           if (chat?.id) instance.chatIndex.set(chat.id, chat);
         }
 
-        // Process contacts for LID mapping
+        // ✅ FIX: Restore chat persistence to database (was missing after refactoring)
+        const dbChats = chatList.map(mapChatForDb).filter(Boolean) as any;
+        this.chatRepo.upsertMany(tenantId, deviceId, dbChats);
+        this.chatRepo.markHistorySync(tenantId, deviceId, dbChats.length);
+
+        logger.info(
+          {
+            deviceId,
+            chatsCount: chatList.length,
+            contactsCount: contacts?.length || 0,
+          },
+          'History sync received (messaging-history.set)'
+        );
+
+        // ✅ FIX: Process contacts for LID mapping with v7 Contact type structure
+        // In v7, Contact has: id (preferred), phoneNumber (if id is LID), lid (if id is PN)
         if (contacts && contacts.length > 0) {
           const { LidPhoneRepository } = await import('../storage/repositories');
           const lidRepo = new LidPhoneRepository();
           const updates: any[] = [];
 
           for (const contact of contacts) {
-            // Check if contact has lid property
-            // contact.id is typically phone JID? 
-            if (contact.id && (contact as any).lid) {
+            const contactAny = contact as any;
+            const contactId = contactAny.id;
+            const contactLid = contactAny.lid;
+            const contactPhoneNumber = contactAny.phoneNumber;
+            const contactName = contactAny.name || contactAny.notify || contactAny.verifiedName;
+
+            // v7 Contact type logic:
+            // Case 1: id is PN, lid is separate -> map lid -> id (PN)
+            // Case 2: id is LID, phoneNumber is separate -> map id (LID) -> phoneNumber
+            if (contactId && contactLid) {
+              // id is PN, lid is the LID
               updates.push({
-                lid: (contact as any).lid,
-                phoneJid: contact.id,
-                name: contact.name || contact.notify || contact.verifiedName
+                lid: contactLid,
+                phoneJid: contactId,
+                name: contactName
+              });
+            } else if (contactId && contactPhoneNumber && contactId.endsWith('@lid')) {
+              // id is LID, phoneNumber is the PN
+              updates.push({
+                lid: contactId,
+                phoneJid: contactPhoneNumber.includes('@') ? contactPhoneNumber : `${contactPhoneNumber}@s.whatsapp.net`,
+                name: contactName
               });
             }
           }
@@ -635,7 +665,7 @@ export class DeviceManager {
       }
     });
 
-    // Contacts Upsert/Update
+    // Contacts Upsert/Update - ✅ FIX: Updated for v7 Contact type structure
     const handleContactsUpdate = async (contacts: any[]) => {
       try {
         const { LidPhoneRepository } = await import('../storage/repositories');
@@ -643,17 +673,34 @@ export class DeviceManager {
         const updates: any[] = [];
 
         for (const contact of contacts) {
-          // If contact has both ID (phone) and LID, map them
-          // Baileys contact structure varies, but often:
-          // id: phone_jid (or lid)
-          // lid: string (if id is phone)
-          // phoneNumber: string (if id is lid? unlikely)
+          // v7 Contact type structure:
+          // - id: preferred identifier (could be PN or LID depending on WhatsApp's preference)
+          // - lid: LID if id is PN
+          // - phoneNumber: phone number if id is LID
+          const contactId = contact.id as string | undefined;
+          const contactLid = contact.lid as string | undefined;
+          const contactPhoneNumber = contact.phoneNumber as string | undefined;
+          const contactName = contact.name || contact.notify || contact.verifiedName;
 
-          if (contact.id && contact.lid) {
+          if (!contactId) continue;
+
+          // Case 1: id is PN, lid is separate -> map lid -> id (PN)
+          if (contactLid && !contactId.endsWith('@lid')) {
             updates.push({
-              lid: contact.lid,
-              phoneJid: contact.id, // Assuming ID is phone JID if LID is separate property
-              name: contact.name || contact.notify || contact.verifiedName
+              lid: contactLid,
+              phoneJid: contactId,
+              name: contactName
+            });
+          }
+          // Case 2: id is LID, phoneNumber is separate -> map id (LID) -> phoneNumber
+          else if (contactId.endsWith('@lid') && contactPhoneNumber) {
+            const phoneJid = contactPhoneNumber.includes('@')
+              ? contactPhoneNumber
+              : `${contactPhoneNumber}@s.whatsapp.net`;
+            updates.push({
+              lid: contactId,
+              phoneJid,
+              name: contactName
             });
           }
         }
@@ -807,12 +854,31 @@ export class DeviceManager {
           if (msg.message && msg.key.fromMe === false) {
             // Save to event log and inbox
             const remoteJidRaw = msg.key.remoteJid || 'unknown';
-            const senderPn = (msg.key as any)?.senderPn as string | undefined;
-            const jid = remoteJidRaw.endsWith('@lid') && senderPn ? senderPn : remoteJidRaw;
             const messageId = msg.key.id || 'unknown';
 
+            // ✅ FIX: Use v7 remoteJidAlt/participantAlt instead of deprecated senderPn
+            // In Baileys 7.0.0, MessageKey now has:
+            // - remoteJidAlt: Alternate JID for DMs (if remoteJid is LID, this is PN)
+            // - participantAlt: Alternate for groups/broadcast
+            const keyAny = msg.key as any;
+            const remoteJidAlt = keyAny.remoteJidAlt as string | undefined;
+            const participantAlt = keyAny.participantAlt as string | undefined;
+
+            // Determine the phone number JID (PN)
+            // For DMs: use remoteJidAlt if remoteJid is LID
+            // For Groups: use participantAlt if participant is LID
+            let phoneNumberJid: string | undefined;
+            if (remoteJidRaw.endsWith('@lid') && remoteJidAlt) {
+              phoneNumberJid = remoteJidAlt;
+            } else if (keyAny.participant?.endsWith('@lid') && participantAlt) {
+              phoneNumberJid = participantAlt;
+            }
+
+            // Use phone number if available, otherwise use raw JID
+            const jid = phoneNumberJid || remoteJidRaw;
+
             // Store @lid -> phone mapping for future lookups
-            if (remoteJidRaw.endsWith('@lid') && senderPn) {
+            if (remoteJidRaw.endsWith('@lid') && phoneNumberJid) {
               try {
                 const db = (await import('../storage/database')).getDatabase();
                 const now = Math.floor(Date.now() / 1000);
@@ -824,8 +890,8 @@ export class DeviceManager {
                     name = COALESCE(excluded.name, lid_phone_map.name),
                     updated_at = excluded.updated_at
                 `);
-                stmt.run(remoteJidRaw, senderPn, deviceId, instance.state.tenantId, msg.pushName || null, now, now);
-                logger.debug({ deviceId, lid: remoteJidRaw, phoneJid: senderPn }, 'Stored @lid -> phone mapping');
+                stmt.run(remoteJidRaw, phoneNumberJid, deviceId, instance.state.tenantId, msg.pushName || null, now, now);
+                logger.debug({ deviceId, lid: remoteJidRaw, phoneJid: phoneNumberJid }, 'Stored @lid -> phone mapping from message');
               } catch (mappingError) {
                 logger.error({ mappingError, deviceId, lid: remoteJidRaw }, 'Failed to store @lid -> phone mapping');
               }

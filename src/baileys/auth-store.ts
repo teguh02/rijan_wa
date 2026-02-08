@@ -1,7 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import logger from '../utils/logger';
-import type { AuthenticationState } from '@whiskeysockets/baileys';
+
+// Type alias to avoid static import of ESM Baileys
+type AuthenticationState = Awaited<ReturnType<typeof import('@whiskeysockets/baileys').useMultiFileAuthState>>['state'];
 
 /**
  * Baileys Auth State Storage - File-based dengan DB sync
